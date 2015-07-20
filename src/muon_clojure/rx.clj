@@ -3,6 +3,23 @@
             [clojure.core.async :refer [go-loop go <! >! chan buffer close!]])
   (:import (org.reactivestreams Publisher Subscriber Subscription)))
 
+(defn publisher [gen-fn params]
+  (log/info (str "::::::::::::::::::::::::::::::: " (pr-str params)))
+  (reify Publisher
+    (^void subscribe [this ^Subscriber s]
+      (log/info "subscribe::::::::: SUBSCRIBER" s)
+      (let [ch (gen-fn params)]
+        (go
+          (loop [item (<! ch)]
+            (if (nil? item)
+              (do
+                (log/debug "::::::::::::: SUBSCRIBER" s "closing channel...")
+                (.onComplete s)
+                (close! ch))
+              (do
+                (.onNext s item)
+                (recur (<! ch))))))))))
+
 (defn subscriber [ch]
   (reify Subscriber
     (^void onSubscribe [this ^Subscription s]

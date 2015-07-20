@@ -1,6 +1,5 @@
 (ns muon-clojure.server
-  (:require [muon-clojure.rx :as rx]
-            [clojure.data.json :as json]
+  (:require [clojure.data.json :as json]
             [clojure.java.data :as j]
             [clojure.tools.logging :as log])
   (:import (io.muoncore Muon MuonStreamGenerator)
@@ -28,7 +27,12 @@
     muon))
 
 (defn start-server! [ms]
-  (expose-stream! ms)
-  (expose-post! ms)
+  (if (satisfies? MicroserviceStream ms)
+    (expose-stream! ms))
+  (if (satisfies? MicroserviceCommand ms)
+    (expose-post! ms))
+  (if (satisfies? MicroserviceQuery ms)
+    (expose-get ms))
   (Thread/sleep 2000)
   ms)
+

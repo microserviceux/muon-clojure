@@ -32,11 +32,16 @@
               m)))
 
 (defprotocol ClientConnection
+  (query [this service-url params])
   (post [this service-url item])
   (subscribe [this service-url params]))
 
 (defrecord MuonService [muon]
   ClientConnection
+  (query [this service-url params]
+    (let [evb (MuonResourceEventBuilder/event params)]
+      (.withUri evb service-url)
+      (.get muon (.build evb) Map)))
   (subscribe [this service-url params]
     (let [ch (chan)]
       (go
@@ -84,6 +89,11 @@
                               :stream-name stream-name})]
     (log/info ":::::::: CLIENT SUBSCRIBING" service-url params)
     (subscribe *muon-config* service-url params)))
+
+(defn query-event [service-url params]
+  (let [item-json (dekeywordize params)]
+    (log/info ":::::::: CLIENT QUERYING" service-url item-json)
+    (query *muon-config* service-url item-json)))
 
 (defn post-event [service-url stream-name item]
   (let [item-json (dekeywordize item)]

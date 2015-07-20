@@ -1,4 +1,4 @@
-(defproject muon-clojure "0.1.0-SNAPSHOT"
+(defproject io.muoncore/muon-clojure "0.1.11"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -26,15 +26,14 @@
                  [incanter "1.5.6"]
                  [ring "1.3.2"]
                  [ring/ring-json "0.3.1"]
-                 [eventstore-deps "0.1.0-SNAPSHOT"]
                  [com.basho.riak/riak-client "2.0.1" :exclusions [com.sun/tools]]
                  [org.json/json "20141113"]
                  [midje "1.6.3"]
                  [ring/ring-defaults "0.1.2"]
                  [midje "1.6.3"]
                  [uap-clj "1.0.1"]
-                 [io.muoncore/muon-core "0.30-20150626114231"]
-                 [io.muoncore/muon-transport-amqp "0.30-20150626114231"]
-                 [io.muoncore/muon-discovery-amqp "0.30-20150626114231"]
+                 [io.muoncore/muon-core "0.32"]
+                 [io.muoncore/muon-transport-amqp "0.32"]
+                 [io.muoncore/muon-discovery-amqp "0.32"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [stylefruits/gniazdo "0.4.0"]])

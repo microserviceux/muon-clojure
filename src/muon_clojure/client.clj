@@ -11,7 +11,7 @@
            (java.util Map)))
 
 #_(def amazon-url
-  "amqp://sentinel:lkjljkllj@ec2-52-28-16-238.eu-central-1.compute.amazonaws.com")
+  "amqp://BORKED")
 (def amazon-url
   "amqp://localhost")
 

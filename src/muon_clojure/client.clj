@@ -1,5 +1,6 @@
 (ns muon-clojure.client
   (:require [muon-clojure.rx :as rx]
+            [muon-clojure.common :as mcc]
             [clojure.core.async :refer [go-loop go <! >! chan buffer close!]]
             [clojure.tools.logging :as log])
   (:use [somnium.congomongo.coerce :only [coerce coerce-fields coerce-index-fields]])
@@ -17,20 +18,6 @@
 
 (def ^:dynamic *muon-config* nil)
 
-(defn dekeywordize
-  "Converts the keys in a map from keywords to strings."
-  [m]
-  (apply merge
-         (map (fn [[k v]] {(name k)
-                           (if (map? v)
-                             (dekeywordize v)
-                             (if (seq? v)
-                               (into (empty v) (map dekeywordize v))
-                               (if (keyword? v)
-                                 (name v)
-                                 v)))})
-              m)))
-
 (defprotocol ClientConnection
   (query [this service-url params])
   (post [this service-url item])
@@ -41,7 +28,8 @@
   (query [this service-url params]
     (let [evb (MuonResourceEventBuilder/event params)]
       (.withUri evb service-url)
-      (.get muon (.build evb) Map)))
+      (->> (.get muon (.build evb) Map)
+           .get .getResponseEvent .getDecodedContent)))
   (subscribe [this service-url params]
     (let [ch (chan)]
       (go
@@ -85,20 +73,20 @@
   [service-url & {:keys [from stream-type stream-name]
                   :or {from (System/currentTimeMillis) stream-type :hot
                        stream-name "events"}}]
-  (let [params (dekeywordize {:from (str from) :stream-type stream-type
+  (let [params (mcc/dekeywordize {:from (str from) :stream-type stream-type
                               :stream-name stream-name})]
     (log/info ":::::::: CLIENT SUBSCRIBING" service-url params)
     (subscribe *muon-config* service-url params)))
 
 (defn query-event [service-url params]
-  (let [item-json (dekeywordize params)]
+  (let [item-json (mcc/dekeywordize params)]
     (log/info ":::::::: CLIENT QUERYING" service-url item-json)
-    (query *muon-config* service-url item-json)))
+    (mcc/keywordize (into {} (query *muon-config* service-url item-json)))))
 
 (defn post-event [service-url stream-name item]
-  (let [item-json (dekeywordize item)]
-    (post *muon-config* service-url {"stream-name" stream-name
-                                     "payload" item-json})))
+  (let [item-json (mcc/dekeywordize item)]
+    (mcc/keywordize (into {} (post *muon-config* service-url {"stream-name" stream-name
+                                                              "payload" item-json})))))
 
 #_(with-muon (muon-client amazon-url "asap-client" "asap" "client")
   (println (stream-subscription "muon://eventstore/stream" :stream-type :hot))

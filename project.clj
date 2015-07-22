@@ -1,4 +1,4 @@
-(defproject io.muoncore/muon-clojure "0.1.12"
+(defproject io.muoncore/muon-clojure "0.1.13"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"

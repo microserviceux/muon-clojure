@@ -51,7 +51,8 @@
   (post [this service-url item]
     (let [evb (MuonResourceEventBuilder/event item)]
       (.withUri evb service-url)
-      (.post muon service-url (.build evb) Map))))
+      (->> (.post muon service-url (.build evb) Map)
+           .get .getResponseEvent .getDecodedContent))))
 
 (defmulti muon-client (fn [url _ & _] (class url)))
 
@@ -74,7 +75,7 @@
                   :or {from (System/currentTimeMillis) stream-type :hot
                        stream-name "events"}}]
   (let [params (mcc/dekeywordize {:from (str from) :stream-type stream-type
-                              :stream-name stream-name})]
+                                  :stream-name stream-name})]
     (log/info ":::::::: CLIENT SUBSCRIBING" service-url params)
     (subscribe *muon-config* service-url params)))
 
@@ -85,8 +86,7 @@
 
 (defn post-event [service-url stream-name item]
   (let [item-json (mcc/dekeywordize item)]
-    (mcc/keywordize (into {} (post *muon-config* service-url {"stream-name" stream-name
-                                                              "payload" item-json})))))
+    (mcc/keywordize (into {} (post *muon-config* service-url item-json)))))
 
 #_(with-muon (muon-client amazon-url "asap-client" "asap" "client")
   (println (stream-subscription "muon://eventstore/stream" :stream-type :hot))

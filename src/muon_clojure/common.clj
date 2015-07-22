@@ -30,11 +30,11 @@
       (if (keyword? m)
         (name m)
         m))))
-(dekeywordize [{:phrase "hello"}])
 
 (defn keywordize
   "Converts the keys in a map from strings to keywords"
   [m]
+  (log/info "keywordize" (class m) ":" (pr-str m))
   (if (instance? com.google.gson.internal.LinkedTreeMap m)
     (keywordize (into {} m))
     (if (map? m)
@@ -86,7 +86,10 @@
             Map
             (reify io.muoncore.MuonService$MuonQuery
                 (^MuonFuture onQuery [_ ^MuonResourceEvent resource]
+                  (log/info "before onQuery" (.getDecodedContent resource))
                   (log/info "onQuery" (pr-str (decode-map resource)))
-                  (ImmediateReturnFuture. (dekeywordize
-                                            (res-fn (decode-map resource))))))))
+                  (let [dk (dekeywordize
+                             (res-fn (decode-map resource)))]
+                    (log/info "ImmediateReturnFuture." (pr-str dk))
+                    (ImmediateReturnFuture. dk))))))
 

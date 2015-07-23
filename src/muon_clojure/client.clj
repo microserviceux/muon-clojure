@@ -11,11 +11,6 @@
            (org.reactivestreams Publisher)
            (java.util Map)))
 
-#_(def amazon-url
-  "amqp://BORKED")
-(def amazon-url
-  "amqp://localhost")
-
 (def ^:dynamic *muon-config* nil)
 
 (defprotocol ClientConnection

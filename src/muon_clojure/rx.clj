@@ -1,4 +1,5 @@
 (ns muon-clojure.rx
+  (:use muon-clojure.utils)
   (:require [clojure.tools.logging :as log]
             [clojure.core.async :refer [go-loop go <! >! chan buffer close!]])
   (:import (org.reactivestreams Publisher Subscriber Subscription)))
@@ -17,7 +18,7 @@
                 (.onComplete s)
                 (close! ch))
               (do
-                (.onNext s item)
+                (.onNext s (dekeywordize item))
                 (recur (<! ch))))))))))
 
 (defn subscriber [ch]

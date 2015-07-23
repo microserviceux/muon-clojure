@@ -10,9 +10,6 @@
            (org.reactivestreams Publisher)
            (java.util Map)))
 
-(def amazon-url
-  "amqp://localhost")
-
 (defprotocol MicroserviceStream (expose-stream! [this]))
 (defprotocol MicroserviceCommand (expose-post! [this]))
 (defprotocol MicroserviceQuery (expose-get [this]))

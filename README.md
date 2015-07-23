@@ -41,7 +41,10 @@ To import the library:
 ```clojure
 (require [clojure.core.async :as async :refer [go <!]])
 
-(let [ch (with-muon m (stream-subscription "muon://target-service/endpoint" :from 0 :stream-type "hot-cold" :stream-name "my-stream"))]
+(let [ch (with-muon m (stream-subscription "muon://target-service/endpoint"
+                        :from 0
+                        :stream-type "hot-cold"
+                        :stream-name "my-stream"))]
   (go (loop [elem (<! ch)] (println (pr-str elem)) (recur (<! ch)))))
 ```
 

@@ -1,6 +1,6 @@
 (ns muon-clojure.client
   (:require [muon-clojure.rx :as rx]
-            [muon-clojure.common :as mcc]
+            [muon-clojure.utils :as mcu]
             [clojure.core.async :refer [go-loop go <! >! chan buffer close!]]
             [clojure.tools.logging :as log])
   (:use [somnium.congomongo.coerce :only [coerce coerce-fields coerce-index-fields]])
@@ -69,19 +69,19 @@
   [service-url & {:keys [from stream-type stream-name]
                   :or {from (System/currentTimeMillis) stream-type :hot
                        stream-name "events"}}]
-  (let [params (mcc/dekeywordize {:from (str from) :stream-type stream-type
+  (let [params (mcu/dekeywordize {:from (str from) :stream-type stream-type
                                   :stream-name stream-name})]
     (log/info ":::::::: CLIENT SUBSCRIBING" service-url params)
     (subscribe *muon-config* service-url params)))
 
 (defn query-event [service-url params]
-  (let [item-json (mcc/dekeywordize params)]
+  (let [item-json (mcu/dekeywordize params)]
     (log/info ":::::::: CLIENT QUERYING" service-url item-json)
-    (mcc/keywordize (into {} (query *muon-config* service-url item-json)))))
+    (mcu/keywordize (into {} (query *muon-config* service-url item-json)))))
 
 (defn post-event [service-url stream-name item]
-  (let [item-json (mcc/dekeywordize item)]
-    (mcc/keywordize (into {} (post *muon-config* service-url item-json)))))
+  (let [item-json (mcu/dekeywordize item)]
+    (mcu/keywordize (into {} (post *muon-config* service-url item-json)))))
 
 #_(with-muon (muon-client amazon-url "asap-client" "asap" "client")
   (println (stream-subscription "muon://eventstore/stream" :stream-type :hot))

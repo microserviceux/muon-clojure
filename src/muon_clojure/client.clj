@@ -15,7 +15,7 @@
 
 (defprotocol ClientConnection
   (query [this service-url params])
-  (post [this service-url item])
+  (command [this service-url item])
   (subscribe [this service-url params]))
 
 (defrecord MuonService [muon]
@@ -23,7 +23,8 @@
   (query [this service-url params]
     (let [evb (MuonResourceEventBuilder/event params)]
       (.withUri evb service-url)
-      (->> (.get muon (.build evb) Map)
+      (println (pr-str (clojure.java.data/from-java (.build evb))))
+      (->> (.query muon (.build evb) Map)
            .get .getResponseEvent .getDecodedContent)))
   (subscribe [this service-url params]
     (let [ch (chan)]
@@ -40,13 +41,13 @@
                   (log/info "::::::::::::: Stream failed, resubscribing")
                   (.subscribe muon service-url Map params (rx/subscriber failsafe-ch)))
                 (do
-                  (>! ch ev)
+                  (>! ch (mcu/keywordize ev))
                   (recur (<! failsafe-ch))))))))
       ch))
-  (post [this service-url item]
+  (command [this service-url item]
     (let [evb (MuonResourceEventBuilder/event item)]
       (.withUri evb service-url)
-      (->> (.post muon service-url (.build evb) Map)
+      (->> (.command muon service-url (.build evb) Map)
            .get .getResponseEvent .getDecodedContent))))
 
 (defmulti muon-client (fn [url _ & _] (class url)))
@@ -79,9 +80,9 @@
     (log/info ":::::::: CLIENT QUERYING" service-url item-json)
     (mcu/keywordize (into {} (query *muon-config* service-url item-json)))))
 
-(defn post-event [service-url stream-name item]
+(defn post-event [service-url item]
   (let [item-json (mcu/dekeywordize item)]
-    (mcu/keywordize (into {} (post *muon-config* service-url item-json)))))
+    (mcu/keywordize (into {} (command *muon-config* service-url item-json)))))
 
 #_(with-muon (muon-client amazon-url "asap-client" "asap" "client")
   (println (stream-subscription "muon://eventstore/stream" :stream-type :hot))

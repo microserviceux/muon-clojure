@@ -3,8 +3,9 @@
             [muon-clojure.utils :as mcu]
             [muon-clojure.rx :as rx])
   (:import (io.muoncore Muon MuonStreamGenerator)
-           (io.muoncore.future MuonFuture ImmediateReturnFuture)
-           (io.muoncore.transport.resource MuonResourceEvent)
+           (io.muoncore.future MuonFuture ImmediateReturnFuture MuonFutures)
+           (io.muoncore.transport.resource MuonResourceEvent
+                                           MuonResourceEventBuilder)
            (io.muoncore.extension.amqp AmqpTransportExtension)
            (io.muoncore.extension.amqp.discovery AmqpDiscovery)
            (org.reactivestreams Publisher)
@@ -29,8 +30,9 @@
               (reify io.muoncore.MuonService$MuonCommand
                 (^MuonFuture onCommand [_ ^MuonResourceEvent resource]
                   (log/info "onCommand" (pr-str (decode-map resource)))
-                  (ImmediateReturnFuture. (mcu/dekeywordize
-                                            (res-fn (decode-map resource))))))))
+                  (MuonFutures/immediately
+                      (mcu/dekeywordize
+                        (res-fn (decode-map resource))))))))
 
 (defn on-query [ms endpoint-name res-fn]
   (.onQuery (:m ms)
@@ -43,5 +45,5 @@
                   (let [dk (mcu/dekeywordize
                              (res-fn (decode-map resource)))]
                     (log/info "ImmediateReturnFuture." (pr-str dk))
-                    (ImmediateReturnFuture. dk))))))
+                    (MuonFutures/immediately dk))))))
 

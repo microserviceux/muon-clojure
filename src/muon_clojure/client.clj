@@ -31,18 +31,20 @@
       (go
         (let [failsafe-ch (chan)]
           (.subscribe muon service-url Map params (rx/subscriber failsafe-ch))
-          (loop [ev (<! failsafe-ch)]
+          (loop [ev (<! failsafe-ch) timeout 1]
             (if (nil? ev)
               (do
                 (log/info ":::::: Stream closed")
                 (close! ch))
-              (if (instance? Throwable ev)
-                (do
-                  (log/info "::::::::::::: Stream failed, resubscribing")
-                  (.subscribe muon service-url Map params (rx/subscriber failsafe-ch)))
-                (do
-                  (>! ch (mcu/keywordize ev))
-                  (recur (<! failsafe-ch))))))))
+              (let [thrown? (instance? Throwable ev)]
+                (if thrown?
+                  (do
+                    (log/info (str "::::::::::::: Stream failed, resubscribing after "
+                                   timeout "ms..."))
+                    (Thread/sleep timeout)
+                    (.subscribe muon service-url Map params (rx/subscriber failsafe-ch)))
+                  (>! ch (mcu/keywordize ev)))
+                (recur (<! failsafe-ch) (if thrown? (* 2 timeout) 1)))))))
       ch))
   (command [this service-url item]
     (let [evb (MuonResourceEventBuilder/event item)]

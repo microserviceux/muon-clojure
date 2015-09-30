@@ -1,4 +1,4 @@
-(defproject io.muoncore/muon-clojure "5.2.0"
+(defproject io.muoncore/muon-clojure "5.3.2"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -32,8 +32,8 @@
                  [ring/ring-defaults "0.1.2"]
                  [midje "1.6.3"]
                  [uap-clj "1.0.1"]
-                 [io.muoncore/muon-core "5.1.0"]
-                 [io.muoncore/muon-transport-amqp "5.1.0"]
-                 [io.muoncore/muon-discovery-amqp "5.1.0"]
+                 [io.muoncore/muon-core "5.4.4"]
+                 [io.muoncore/muon-transport-amqp "5.4.4"]
+                 [io.muoncore/muon-discovery-amqp "5.4.4"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [stylefruits/gniazdo "0.4.0"]])

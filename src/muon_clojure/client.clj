@@ -4,6 +4,7 @@
             [clojure.core.async :refer [go-loop go <! >! chan buffer close!]]
             [clojure.tools.logging :as log])
   (:use [somnium.congomongo.coerce :only [coerce coerce-fields coerce-index-fields]])
+  (:use clojure.java.data)
   (:import (io.muoncore Muon MuonStreamGenerator)
            (io.muoncore.transport.resource MuonResourceEvent MuonResourceEventBuilder)
            (io.muoncore.extension.amqp AmqpTransportExtension)
@@ -23,7 +24,7 @@
   (query [this service-url params]
     (let [evb (MuonResourceEventBuilder/event params)]
       (.withUri evb service-url)
-      (println (pr-str (clojure.java.data/from-java (.build evb))))
+      (println (pr-str (from-java (.build evb))))
       (->> (.query muon (.build evb) Map)
            .get .getResponseEvent .getDecodedContent)))
   (subscribe [this service-url params]

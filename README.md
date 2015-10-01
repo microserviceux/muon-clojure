@@ -6,7 +6,7 @@ A Clojure client/server library for interacting with Muon microservices.
 
 `muon-clojure` is deployed in clojars.org:
 
-`[muon-clojure "5.3.3"]`
+`[io.muoncore/muon-clojure "5.3.3"]`
 
 ## Usage
 

@@ -20,7 +20,7 @@
   (.streamSource (:m ms) (str "/" endpoint-name) Map
                  (reify MuonStreamGenerator
                    (^Publisher generatePublisher [this ^Map params]
-                     (log/info "streamSource" (pr-str params))
+                     (log/trace "streamSource" (pr-str params))
                      (rx/publisher gen-fn params)))))
 
 (defn on-command [ms endpoint-name res-fn]
@@ -29,7 +29,7 @@
               Map
               (reify io.muoncore.MuonService$MuonCommand
                 (^MuonFuture onCommand [_ ^MuonResourceEvent resource]
-                  (log/info "onCommand" (pr-str (decode-map resource)))
+                  (log/trace "onCommand" (pr-str (decode-map resource)))
                   (MuonFutures/immediately
                       (mcu/dekeywordize
                         (res-fn (decode-map resource))))))))
@@ -40,10 +40,10 @@
             Map
             (reify io.muoncore.MuonService$MuonQuery
                 (^MuonFuture onQuery [_ ^MuonResourceEvent resource]
-                  (log/info "before onQuery" (.getDecodedContent resource))
-                  (log/info "onQuery" (pr-str (decode-map resource)))
+                  (log/trace "before onQuery" (.getDecodedContent resource))
+                  (log/trace "onQuery" (pr-str (decode-map resource)))
                   (let [dk (mcu/dekeywordize
                              (res-fn (decode-map resource)))]
-                    (log/info "ImmediateReturnFuture." (pr-str dk))
+                    (log/trace "ImmediateReturnFuture." (pr-str dk))
                     (MuonFutures/immediately dk))))))
 

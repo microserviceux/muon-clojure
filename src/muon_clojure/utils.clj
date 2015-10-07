@@ -26,7 +26,7 @@
 (defn keywordize
   "Converts the keys in a map from strings to keywords"
   [m]
-  (log/info "keywordize" (class m) ":" (pr-str m))
+  #_(log/info "keywordize" (class m) ":" (pr-str m))
   (if (instance? com.google.gson.internal.LinkedTreeMap m)
     (keywordize (into {} m))
     (if (map? m)

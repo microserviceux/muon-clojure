@@ -36,4 +36,5 @@
                  [io.muoncore/muon-transport-amqp "5.4.4"]
                  [io.muoncore/muon-discovery-amqp "5.4.4"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
-                 [stylefruits/gniazdo "0.4.0"]])
+                 [stylefruits/gniazdo "0.4.0"]]
+  :plugins [[lein-midje "3.1.3"]])

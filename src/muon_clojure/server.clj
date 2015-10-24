@@ -1,6 +1,5 @@
 (ns muon-clojure.server
-  (:require [clojure.data.json :as json]
-            [clojure.tools.logging :as log])
+  (:require [clojure.tools.logging :as log])
   (:import (io.muoncore Muon MuonStreamGenerator)
            (io.muoncore.future MuonFuture ImmediateReturnFuture)
            (io.muoncore.transport.resource MuonResourceEvent)

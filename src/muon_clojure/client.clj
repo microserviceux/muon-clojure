@@ -3,7 +3,6 @@
             [muon-clojure.utils :as mcu]
             [clojure.core.async :refer [go-loop go <! >! chan buffer close!]]
             [clojure.tools.logging :as log])
-  (:use [somnium.congomongo.coerce :only [coerce coerce-fields coerce-index-fields]])
   (:use clojure.java.data)
   (:import (io.muoncore Muon MuonStreamGenerator)
            (io.muoncore.transport.resource MuonResourceEvent MuonResourceEventBuilder)

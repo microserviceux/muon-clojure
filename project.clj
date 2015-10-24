@@ -13,6 +13,8 @@
                  [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.reactivestreams/reactive-streams "1.0.0.final"]
                  [org.clojure/java.data "0.1.1"]
+                 [midje "1.7.0"]
                  [io.muoncore/muon-core "5.4.4"]
                  [io.muoncore/muon-transport-amqp "5.4.4"]
-                 [io.muoncore/muon-discovery-amqp "5.4.4"]])
+                 [io.muoncore/muon-discovery-amqp "5.4.4"]]
+  :plugins [[lein-midje "3.1.3"]])

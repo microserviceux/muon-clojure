@@ -9,7 +9,7 @@
   (reify Publisher
     (^void subscribe [this ^Subscriber s]
       (log/info "subscribe::::::::: SUBSCRIBER" s)
-      (let [ch (gen-fn params)]
+      (let [ch (gen-fn (keywordize params))]
         (go
           (loop [item (<! ch)]
             (if (nil? item)

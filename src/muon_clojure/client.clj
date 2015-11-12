@@ -23,7 +23,7 @@
   (query [this service-url params]
     (let [evb (MuonResourceEventBuilder/event params)]
       (.withUri evb service-url)
-      (println (pr-str (from-java (.build evb))))
+      (log/trace (pr-str (from-java (.build evb))))
       (->> (.query muon (.build evb) Map)
            .get .getResponseEvent .getDecodedContent)))
   (subscribe [this service-url params]
@@ -85,8 +85,4 @@
 (defn post-event [service-url item]
   (let [item-json (mcu/dekeywordize item)]
     (mcu/keywordize (into {} (command *muon-config* service-url item-json)))))
-
-#_(with-muon (muon-client amazon-url "asap-client" "asap" "client")
-  (println (stream-subscription "muon://eventstore/stream" :stream-type :hot))
-  (post-event "muon://eventstore/event" {:test :ok}))
 

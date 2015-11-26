@@ -6,55 +6,65 @@
             [muon-clojure.common :as mcc]
             [clojure.core.async :refer [to-chan <!!]]))
 
+(set! (. io.muoncore.channel.async.StandardAsyncChannel echoOut) true)
+
 (defrecord TestMicroservice [m]
+  MicroserviceEngine
+  (expose-stream! [this endpoint stream-type fn-process]
+    (mcc/stream-source m endpoint stream-type fn-process))
+  (expose-request! [this endpoint fn-process]
+    (mcc/on-request m endpoint fn-process))
   MicroserviceStream
-  (expose-stream! [this]
-    ;; TODO: provide a proper channel generator function and an endpoint-name
-    (mcc/stream-source this "stream-test"
-                       (fn [params]
-                         (to-chan
-                           [{:val 1}
-                            {:val 2}
-                            {:val 3}
-                            {:val 4}
-                            {:val 5}]))))
-  MicroserviceCommand
-  (expose-post! [this]
-    ;; TODO: provide proper POST listener functions
-    (mcc/on-command this "post-endpoint" (fn [resource]
-                                           {:val (inc (:val resource))})))
-  MicroserviceQuery
-  (expose-get [this]
-    ;; TODO: provide proper GET listener functions
-    (mcc/on-query this "get-endpoint" (fn [resource] {:test :ok}))))
+  (stream-mappings [this]
+    [{:endpoint "stream-test" :type :hot-cold
+      :fn-process (fn [params]
+                    (to-chan
+                     [{:val 1} {:val 2} {:val 3} {:val 4} {:val 5}]))}])
+  MicroserviceRequest
+  (request-mappings [this]
+    [{:endpoint "post-endpoint"
+      :fn-process (fn [resource]
+                    {:val (inc (:val resource))})}
+     {:endpoint "get-endpoint"
+      :fn-process (fn [resource] {:test :ok})}]))
 
 (let [uuid (.toString (java.util.UUID/randomUUID))
+      _ (println "!!!!!!! Before muon")
       m (muon "amqp://localhost" uuid ["dummy" "test"])
+      _ (println "!!!!!!! After muon")
       ms (->TestMicroservice m)]
+  (println "!!!!!!!!!! Before start-server!")
   (start-server! ms)
+  (println "!!!!!!!!!! After start-server!")
   (let [c (muon-client "amqp://localhost" (str uuid "-client")
                        "dummy" "test" "client")]
     (let [get-val
-          (with-muon c (query-event (str "muon://" uuid "/get-endpoint")
+          (with-muon c (query-event (str "request://" uuid "/get-endpoint")
                                     {:test :ok}))
+          _ (println "After get-val")
           post-val
-          (with-muon c (post-event (str "muon://" uuid "/post-endpoint")
+          (with-muon c (post-event (str "request://" uuid "/post-endpoint")
                                    {:val 1}))
+          _ (println "After post-val")
           stream-channel
           (with-muon c (stream-subscription
-                         (str "muon://" uuid "/stream-test")))
+                         (str "stream://" uuid "/stream-test")))
+          _ (println "After stream-channel")
           stream-channel-order
           (with-muon c (stream-subscription
-                         (str "muon://" uuid "/stream-test")))
+                         (str "stream://" uuid "/stream-test")))
+          _ (println "After stream-channel-order")
           not-ordered (<!! (clojure.core.async/reduce
                              (fn [prev n] (concat prev `(~n)))
                              '() stream-channel-order))
+          _ (println "After not-ordered")
           post-many-vals
           (with-muon c (doall
                          (map (fn [_]
-                                (post-event (str "muon://" uuid "/post-endpoint")
+                                (post-event (str "request://" uuid "/post-endpoint")
                                             {:val 1}))
                               (range 0 5))))]
+      (println "!!!!!!!!!! All set")
       (fact "Query works as expected"
             get-val => {:test "ok"})
       (fact "Post works as expected"

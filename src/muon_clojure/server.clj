@@ -1,33 +1,37 @@
 (ns muon-clojure.server
-  (:require [clojure.tools.logging :as log])
+  (:require [clojure.tools.logging :as log]
+            [muon-clojure.common :as mcc]
+            [muon-clojure.utils :as mcu])
   (:import (io.muoncore Muon MuonStreamGenerator)
            (io.muoncore.future MuonFuture ImmediateReturnFuture)
-           (io.muoncore.transport.resource MuonResourceEvent)
-           (io.muoncore.extension.amqp AmqpTransportExtension)
            (io.muoncore.extension.amqp.discovery AmqpDiscovery)
            (org.reactivestreams Publisher)
            (java.util Map)))
 
-(defprotocol MicroserviceStream (expose-stream! [this]))
-(defprotocol MicroserviceCommand (expose-post! [this]))
-(defprotocol MicroserviceQuery (expose-get [this]))
+(defprotocol MicroserviceEngine
+  (expose-stream! [this endpoint stream-type fn-process])
+  (expose-request! [this endpoint fn-process]))
+(defprotocol MicroserviceStream (stream-mappings [this]))
+(defprotocol MicroserviceRequest (request-mappings [this]))
 
 (defn muon [rabbit-url service-identifier tags]
-  (let [discovery (AmqpDiscovery. rabbit-url)
-        muon (Muon. discovery)]
-    (.setServiceIdentifer muon service-identifier)
-    (dorun (map #(.addTag muon %) tags))
-    (.extend (AmqpTransportExtension. rabbit-url) muon)
-    (.start muon)
+  (let [muon (mcu/muon-instance rabbit-url service-identifier tags)]
     muon))
+
+(defn expose-streams! [ms mappings]
+  (dorun (map #(expose-stream!
+                ms (:endpoint %) (:stream-type %) (:fn-process %))
+              mappings)))
+
+(defn expose-requests! [ms mappings]
+  (dorun (map #(expose-request! ms (:endpoint %) (:fn-process %))
+              mappings)))
 
 (defn start-server! [ms]
   (if (satisfies? MicroserviceStream ms)
-    (expose-stream! ms))
-  (if (satisfies? MicroserviceCommand ms)
-    (expose-post! ms))
-  (if (satisfies? MicroserviceQuery ms)
-    (expose-get ms))
+    (expose-streams! ms (stream-mappings ms)))
+  (if (satisfies? MicroserviceRequest ms)
+    (expose-requests! ms (request-mappings ms)))
   (Thread/sleep 2000)
   ms)
 

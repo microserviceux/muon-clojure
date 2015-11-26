@@ -1,5 +1,36 @@
 (ns muon-clojure.utils
-  (:require [clojure.tools.logging :as log]))
+  (:require [clojure.tools.logging :as log])
+  (:import (java.util LinkedList)
+           (io.muoncore SingleTransportMuon MuonStreamGenerator)
+           (io.muoncore.codec.json JsonOnlyCodecs)
+           (io.muoncore.config AutoConfiguration)
+           (io.muoncore.extension.amqp
+            DefaultServiceQueue AMQPMuonTransport
+            DefaultAmqpChannelFactory)
+           (io.muoncore.extension.amqp.discovery
+            AmqpDiscovery ServiceCache)
+           (io.muoncore.extension.amqp.rabbitmq09
+            RabbitMq09ClientAmqpConnection RabbitMq09QueueListenerFactory)))
+
+(defn muon-instance [url service-name tags]
+  (let [connection (RabbitMq09ClientAmqpConnection. url)
+        queue-factory (RabbitMq09QueueListenerFactory.
+                       (.getChannel connection))
+        discovery (AmqpDiscovery. queue-factory connection
+                                  (ServiceCache.) (JsonOnlyCodecs.))]
+    (.start discovery)
+    (Thread/sleep 5000)
+    (let [service-queue (DefaultServiceQueue. service-name connection)
+          channel-factory (DefaultAmqpChannelFactory.
+                            service-name queue-factory connection)
+          muon-transport (AMQPMuonTransport.
+                          url service-queue channel-factory)
+          config (doto (AutoConfiguration.)
+                   (.setServiceName service-name)
+                   (.setAesEncryptionKey "abcde12345678906")
+                   (.setTags (LinkedList. tags)))
+          muon (SingleTransportMuon. config discovery muon-transport)]
+      muon)))
 
 (defn dekeywordize
   "Converts the keys in a map from keywords to strings."

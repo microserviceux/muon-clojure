@@ -1,4 +1,4 @@
-(defproject io.muoncore/muon-clojure "5.3.8"
+(defproject io.muoncore/muon-clojure "6.0.2"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -14,7 +14,7 @@
                  [org.reactivestreams/reactive-streams "1.0.0.final"]
                  [org.clojure/java.data "0.1.1"]
                  [midje "1.7.0"]
-                 [io.muoncore/muon-core "5.4.4"]
-                 [io.muoncore/muon-transport-amqp "5.4.4"]
-                 [io.muoncore/muon-discovery-amqp "5.4.4"]]
+                 [io.muoncore/muon-core "6.0.2"]
+                 [io.muoncore/muon-transport-amqp "6.0.2"]
+                 [io.muoncore/muon-discovery-amqp "6.0.2"]]
   :plugins [[lein-midje "3.1.3"]])

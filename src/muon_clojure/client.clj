@@ -1,7 +1,6 @@
 (ns muon-clojure.client
-  (:require [muon-clojure.rx :as rx]
-            [muon-clojure.utils :as mcu]
-            [clojure.core.async :refer [go-loop go <! >! chan buffer close!]]
+  (:require [muon-clojure.utils :as mcu]
+            [muon-clojure.server :as server]
             [clojure.tools.logging :as log])
   (:use clojure.java.data)
   (:import (io.muoncore.protocol.requestresponse Response)
@@ -10,82 +9,29 @@
 
 (def ^:dynamic *muon-config* nil)
 
-(defprotocol ClientConnection
-  (request [this service-url params])
-  (subscribe [this service-url params]))
-
-(defn impl-request [muon service-url params]
-  (log/trace (pr-str params))
-  (let [response (.request muon service-url params Map)]
-    (log/trace "Response:" (pr-str response))
-    (let [got-response (.get response)
-          payload (.getPayload got-response)]
-      (log/trace "Response payload:" (pr-str payload))
-      payload)))
-
-(defn params->uri [service-url params]
-  (let [query-string (map #(str (name (key %)) "=" (val %)) params)
-        url-string (str service-url "?"
-                        (clojure.string/join "&" query-string))
-        uri (java.net.URI. url-string)]
-    (log/trace "Query string:" url-string)
-    uri))
-
-(defn impl-subscribe [muon service-url params]
-  (let [uri (params->uri service-url params)
-        ch (chan)]
-    (go
-      (let [failsafe-ch (chan)]
-        (.subscribe muon uri Map (rx/subscriber failsafe-ch))
-        (loop [ev (<! failsafe-ch) timeout 1]
-          (if (nil? ev)
-            (do
-              (log/info ":::::: Stream closed")
-              (close! ch))
-            (let [thrown? (instance? Throwable ev)]
-              (if thrown?
-                (do
-                  (log/info (str "::::::::::::: Stream failed, resubscribing after "
-                                 timeout "ms..."))
-                  (Thread/sleep timeout)
-                  (.subscribe muon uri Map (rx/subscriber failsafe-ch)))
-                (>! ch (mcu/keywordize ev)))
-              (recur (<! failsafe-ch) (if thrown? (* 2 timeout) 1)))))))
-    ch))
-
-(defrecord MuonService [muon]
-  ClientConnection
-  (request [this service-url params]
-    (impl-request muon service-url params))
-  (subscribe [this service-url params]
-    (impl-subscribe muon service-url params)))
-
 (defmulti muon-client (fn [url _ & _] (class url)))
 
 (defmethod muon-client String [url service-name & tags]
-  (let [muon (mcu/muon-instance url service-name tags)]
+  (let [muon-instance (mcu/muon-instance url service-name tags)
+        client (server/map->Microservice muon-instance)]
     (Thread/sleep 2000)
-    (->MuonService muon)))
+    client))
 
 (defmacro with-muon [muon & body]
   `(binding [*muon-config* ~muon]
      ~@body))
 
-(defn stream-subscription
+(defn subscribe!
   [service-url & {:keys [from stream-type stream-name]
                   :or {from (System/currentTimeMillis) stream-type :hot
                        stream-name "events"}}]
   (let [params (mcu/dekeywordize {:from (str from) :stream-type stream-type
                                   :stream-name stream-name})]
     (log/info ":::::::: CLIENT SUBSCRIBING" service-url params)
-    (subscribe *muon-config* service-url params)))
+    (server/subscribe *muon-config* service-url params)))
 
-(defn query-event [service-url params]
+(defn request! [service-url params]
   (let [item-json (mcu/dekeywordize params)]
-    (log/info ":::::::: CLIENT QUERYING" service-url item-json)
-    (mcu/keywordize (into {} (request *muon-config* service-url item-json)))))
-
-(defn post-event [service-url item]
-  (let [item-json (mcu/dekeywordize item)]
-    (mcu/keywordize (into {} (request *muon-config* service-url item-json)))))
+    (log/info ":::::::: CLIENT REQUESTING" service-url item-json)
+    (mcu/keywordize (into {} (server/request *muon-config* service-url item-json)))))
 

@@ -4,16 +4,12 @@
   (:require [clojure.test :refer :all]
             [muon-clojure.server :refer :all]
             [muon-clojure.common :as mcc]
+            [com.stuartsierra.component :as component]
             [clojure.core.async :refer [to-chan <!!]]))
 
 (set! (. io.muoncore.channel.async.StandardAsyncChannel echoOut) true)
 
-(defrecord TestMicroservice [m]
-  MicroserviceEngine
-  (expose-stream! [this endpoint stream-type fn-process]
-    (mcc/stream-source m endpoint stream-type fn-process))
-  (expose-request! [this endpoint fn-process]
-    (mcc/on-request m endpoint fn-process))
+(defrecord TestMSImpl []
   MicroserviceStream
   (stream-mappings [this]
     [{:endpoint "stream-test" :type :hot-cold
@@ -30,28 +26,25 @@
 
 (let [uuid (.toString (java.util.UUID/randomUUID))
       _ (println "!!!!!!! Before muon")
-      m (muon "amqp://localhost" uuid ["dummy" "test"])
-      _ (println "!!!!!!! After muon")
-      ms (->TestMicroservice m)]
-  (println "!!!!!!!!!! Before start-server!")
-  (start-server! ms)
-  (println "!!!!!!!!!! After start-server!")
+      ms (component/start (micro-service "amqp://localhost" uuid
+                                         ["dummy" "test"] (->TestMSImpl)))
+      _ (println "!!!!!!! After muon")]
   (let [c (muon-client "amqp://localhost" (str uuid "-client")
                        "dummy" "test" "client")]
     (let [get-val
-          (with-muon c (query-event (str "request://" uuid "/get-endpoint")
-                                    {:test :ok}))
+          (with-muon c (request! (str "request://" uuid "/get-endpoint")
+                                 {:test :ok}))
           _ (println "After get-val")
           post-val
-          (with-muon c (post-event (str "request://" uuid "/post-endpoint")
-                                   {:val 1}))
+          (with-muon c (request! (str "request://" uuid "/post-endpoint")
+                                 {:val 1}))
           _ (println "After post-val")
           stream-channel
-          (with-muon c (stream-subscription
+          (with-muon c (subscribe!
                          (str "stream://" uuid "/stream-test")))
           _ (println "After stream-channel")
           stream-channel-order
-          (with-muon c (stream-subscription
+          (with-muon c (subscribe!
                          (str "stream://" uuid "/stream-test")))
           _ (println "After stream-channel-order")
           not-ordered (<!! (clojure.core.async/reduce
@@ -61,7 +54,7 @@
           post-many-vals
           (with-muon c (doall
                          (map (fn [_]
-                                (post-event (str "request://" uuid "/post-endpoint")
+                                (request! (str "request://" uuid "/post-endpoint")
                                             {:val 1}))
                               (range 0 5))))]
       (println "!!!!!!!!!! All set")
@@ -75,5 +68,6 @@
             (= not-ordered (sort-by :val not-ordered)) => true)
       (fact "Posting many times in a row works as expected"
             post-many-vals => (take 5 (repeat {:val 2.0})))
-      (println not-ordered))))
+      (println not-ordered)))
+  (component/stop ms))
 

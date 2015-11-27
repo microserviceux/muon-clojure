@@ -30,7 +30,7 @@
                    (.setAesEncryptionKey "abcde12345678906")
                    (.setTags (LinkedList. tags)))
           muon (SingleTransportMuon. config discovery muon-transport)]
-      muon)))
+      {:muon muon :discovery discovery :transport muon-transport})))
 
 (defn dekeywordize
   "Converts the keys in a map from keywords to strings."

@@ -1,4 +1,4 @@
-(defproject io.muoncore/muon-clojure "6.0.3-SNAPSHOT"
+(defproject io.muoncore/muon-clojure "6.0.3"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -15,7 +15,7 @@
                  [org.clojure/java.data "0.1.1"]
                  [midje "1.8.1"]
                  [com.stuartsierra/component "0.3.0"]
-                 [io.muoncore/muon-core "6.0.2"]
-                 [io.muoncore/muon-transport-amqp "6.0.2"]
-                 [io.muoncore/muon-discovery-amqp "6.0.2"]]
+                 [io.muoncore/muon-core "6.1.1"]
+                 [io.muoncore/muon-transport-amqp "6.1.1"]
+                 [io.muoncore/muon-discovery-amqp "6.1.1"]]
   :plugins [[lein-midje "3.1.3"]])

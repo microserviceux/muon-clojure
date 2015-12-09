@@ -29,9 +29,12 @@
    (reify ReactiveStreamServerHandlerApi$PublisherGenerator
      (^Publisher generatePublisher
       [this ^ReactiveStreamSubscriptionRequest request]
-      (let [params (into {} (.getArgs request))]
+      (let [params (into {} (.getArgs request))
+            stream-type (if-let [res (get params "stream-type"
+                                          (:stream-type params))]
+                          res (if (nil? type) :hot-cold type))]
         (log/trace "streamSource" (pr-str params))
-        (rx/publisher gen-fn (assoc params :stream-type type)))))))
+        (rx/publisher gen-fn (assoc params :stream-type stream-type)))))))
 
 (defn on-request [muon endpoint-name res-fn]
   (.handleRequest

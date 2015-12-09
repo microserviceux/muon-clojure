@@ -65,7 +65,7 @@
               (recur (<! failsafe-ch) (if thrown? (* 2 timeout) 1)))))))
     ch))
 
-(defrecord Microservice [rabbit-url service-identifier tags implementation]
+(defrecord Microservice [options]
   ClientConnection
   (request [this service-url params]
     (impl-request (:muon this) service-url params))
@@ -74,7 +74,8 @@
   component/Lifecycle
   (start [component]
     (if (nil? (:muon component))
-      (let [muon-instance (mcu/muon-instance rabbit-url service-identifier tags)
+      (let [{:keys [rabbit-url service-identifier tags implementation]} options
+            muon-instance (mcu/muon-instance rabbit-url service-identifier tags)
             muon (:muon muon-instance)]
         (when-not (nil? implementation)
           (if (satisfies? MicroserviceStream implementation)
@@ -94,6 +95,6 @@
           (catch Exception e))
         (merge component {:muon nil :discovery nil :transport nil})))))
 
-(defn micro-service [rabbit-url service-identifier tags implementation]
-  (->Microservice rabbit-url service-identifier tags implementation))
+(defn micro-service [options]
+  (map->Microservice {:options options}))
 

@@ -24,7 +24,7 @@
           channel-factory (DefaultAmqpChannelFactory.
                             service-name queue-factory connection)
           muon-transport (AMQPMuonTransport.
-                          url service-queue channel-factory)
+                          url service-queue channel-factory discovery)
           config (doto (AutoConfiguration.)
                    (.setServiceName service-name)
                    (.setAesEncryptionKey "abcde12345678906")

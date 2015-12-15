@@ -7,6 +7,7 @@
             [muon-clojure.utils :as mcu])
   (:import (io.muoncore Muon MuonStreamGenerator)
            (io.muoncore.future MuonFuture ImmediateReturnFuture)
+           (com.google.common.eventbus EventBus)
            (io.muoncore.extension.amqp.discovery AmqpDiscovery)
            (org.reactivestreams Publisher)
            (java.util Map)))
@@ -49,6 +50,7 @@
     (go
       (let [failsafe-ch (chan)]
         (.subscribe muon uri Map (rx/subscriber failsafe-ch))
+        (log/trace "Starting processing loop...")
         (loop [ev (<! failsafe-ch) timeout 1]
           (if (nil? ev)
             (do
@@ -62,7 +64,8 @@
                   (Thread/sleep timeout)
                   (.subscribe muon uri Map (rx/subscriber failsafe-ch)))
                 (>! ch (mcu/keywordize ev)))
-              (recur (<! failsafe-ch) (if thrown? (* 2 timeout) 1)))))))
+              (recur (<! failsafe-ch) (if thrown? (* 2 timeout) 1)))))
+        (log/trace "Subscription ended")))
     ch))
 
 (defrecord Microservice [options]

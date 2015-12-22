@@ -18,6 +18,7 @@
                 (.onComplete s)
                 (close! ch))
               (do
+                (log/trace "onNext" (dekeywordize item))
                 (.onNext s (dekeywordize item))
                 (recur (<! ch))))))))))
 
@@ -34,4 +35,3 @@
     (^void onComplete [this]
       (close! ch)
       (log/info "onComplete"))))
-

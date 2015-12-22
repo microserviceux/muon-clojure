@@ -33,7 +33,7 @@
             stream-type (if-let [res (get params "stream-type"
                                           (:stream-type params))]
                           res (if (nil? type) :hot-cold type))]
-        (log/trace "streamSource" (pr-str params))
+        (log/trace "stream-source" (pr-str params))
         (rx/publisher gen-fn (assoc params :stream-type stream-type)))))))
 
 (defn on-request [muon endpoint-name res-fn]

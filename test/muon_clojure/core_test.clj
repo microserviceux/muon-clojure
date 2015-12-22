@@ -5,7 +5,8 @@
             [muon-clojure.server :refer :all]
             [muon-clojure.common :as mcc]
             [com.stuartsierra.component :as component]
-            [clojure.core.async :refer [to-chan <!!]]))
+            [clojure.core.async :refer [to-chan <!!]])
+  (:import (com.google.common.eventbus EventBus)))
 
 (set! (. io.muoncore.channel.async.StandardAsyncChannel echoOut) true)
 
@@ -26,10 +27,13 @@
 
 (let [uuid (.toString (java.util.UUID/randomUUID))
       _ (println "!!!!!!! Before muon")
-      ms (component/start (micro-service "amqp://localhost" uuid
-                                         ["dummy" "test"] (->TestMSImpl)))
+      ms (component/start
+          (micro-service {:rabbit-url :local
+                          :service-identifier uuid
+                          :tags ["dummy" "test"]
+                          :implementation (->TestMSImpl)}))
       _ (println "!!!!!!! After muon")]
-  (let [c (muon-client "amqp://localhost" (str uuid "-client")
+  (let [c (muon-client :local (str uuid "-client")
                        "dummy" "test" "client")]
     (let [get-val
           (with-muon c (request! (str "request://" uuid "/get-endpoint")

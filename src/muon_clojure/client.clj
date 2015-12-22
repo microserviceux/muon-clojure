@@ -9,9 +9,7 @@
 
 (def ^:dynamic *muon-config* nil)
 
-(defmulti muon-client (fn [url _ & _] (class url)))
-
-(defmethod muon-client String [url service-name & tags]
+(defn muon-client [url service-name & tags]
   (let [muon-instance (mcu/muon-instance url service-name tags)
         client (server/map->Microservice muon-instance)]
     (Thread/sleep 2000)

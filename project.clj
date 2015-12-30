@@ -3,7 +3,11 @@
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :repositories [["muoncore" "https://simplicityitself.artifactoryonline.com/simplicityitself/repo/"]]
+  :repositories [["snapshots"
+                  {:url
+                   "https://simplicityitself.artifactoryonline.com/simplicityitself/muon/"
+                   :creds :gpg}]
+                 ["releases" "https://simplicityitself.artifactoryonline.com/simplicityitself/repo/"]]
   :aot :all
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/tools.logging "0.3.1"]

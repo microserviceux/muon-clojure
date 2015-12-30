@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# muon-clojure docs
+
 if [ -z "$1" ]
   then
   echo "No argument supplied. Must be either 'release' or 'snapshot'"

@@ -9,6 +9,7 @@
                    :creds :gpg}]
                  ["releases" "https://simplicityitself.artifactoryonline.com/simplicityitself/repo/"]]
   :aot :all
+  :javac-options ["-target" "1.8" "-source" "1.8" "-Xlint:-options"]
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/tools.logging "0.3.1"]
                  [com.google.code.gson/gson "2.4"]

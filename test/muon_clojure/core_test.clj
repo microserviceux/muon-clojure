@@ -28,12 +28,12 @@
 (let [uuid (.toString (java.util.UUID/randomUUID))
       _ (println "!!!!!!! Before muon")
       ms (component/start
-          (micro-service {:rabbit-url :local
+          (micro-service {:rabbit-url "amqp://localhost" #_:local
                           :service-identifier uuid
                           :tags ["dummy" "test"]
                           :implementation (->TestMSImpl)}))
       _ (println "!!!!!!! After muon")]
-  (let [c (muon-client :local (str uuid "-client")
+  (let [c (muon-client "amqp://localhost" #_:local (str uuid "-client")
                        "dummy" "test" "client")]
     (let [get-val
           (with-muon c (request! (str "request://" uuid "/get-endpoint")

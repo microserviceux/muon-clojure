@@ -30,11 +30,18 @@
      (^Publisher generatePublisher
       [this ^ReactiveStreamSubscriptionRequest request]
       (let [params (into {} (.getArgs request))
-            stream-type (if-let [res (get params "stream-type"
-                                          (:stream-type params))]
-                          res (if (nil? type) :hot-cold type))]
+            res (get params "stream-type" (:stream-type params))
+            stream-type (if (or (nil? res)
+                                (= "" (clojure.string/trim res)))
+                          (if (nil? type) :hot-cold type)
+                          res)
+            final-params (dissoc
+                          (assoc params "stream-type" stream-type)
+                          :stream-type)]
         (log/trace "stream-source" (pr-str params))
-        (rx/publisher gen-fn (assoc params :stream-type stream-type)))))))
+        (log/trace "final stream-type" stream-type)
+        (log/trace "final params" final-params)
+        (rx/publisher gen-fn final-params))))))
 
 (defn on-request [muon endpoint-name res-fn]
   (.handleRequest
@@ -48,4 +55,3 @@
                       (into {} (-> query-event .getRequest .getPayload)))]
         (log/trace "on-request" (pr-str resource))
         (.ok query-event (mcu/dekeywordize (res-fn resource))))))))
-

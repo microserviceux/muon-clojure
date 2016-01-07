@@ -11,7 +11,8 @@
             DefaultServiceQueue AMQPMuonTransport
             DefaultAmqpChannelFactory)
            (io.muoncore.extension.amqp.discovery
-            AmqpDiscovery ServiceCache)
+            AmqpDiscovery)
+           (io.muoncore.transport ServiceCache)
            (io.muoncore.extension.amqp.rabbitmq09
             RabbitMq09ClientAmqpConnection RabbitMq09QueueListenerFactory)))
 
@@ -41,7 +42,7 @@
           channel-factory (DefaultAmqpChannelFactory.
                             service-name queue-factory connection)
           muon-transport (AMQPMuonTransport.
-                          url service-queue channel-factory discovery)
+                          url service-queue channel-factory)
           config (doto (AutoConfiguration.)
                    (.setServiceName service-name)
                    (.setAesEncryptionKey "abcde12345678906")

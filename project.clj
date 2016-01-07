@@ -19,7 +19,7 @@
                  [org.clojure/java.data "0.1.1"]
                  [midje "1.8.1"]
                  [com.stuartsierra/component "0.3.0"]
-                 [io.muoncore/muon-core "6.4-20151215133949"]
-                 [io.muoncore/muon-transport-amqp "6.4-20151215133949"]
-                 [io.muoncore/muon-discovery-amqp "6.4-20151215133949"]]
+                 [io.muoncore/muon-core "6.5"]
+                 [io.muoncore/muon-transport-amqp "6.4-20160104233034"]
+                 [io.muoncore/muon-discovery-amqp "6.4-20160104233034"]]
   :plugins [[lein-midje "3.1.3"]])

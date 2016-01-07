@@ -28,14 +28,15 @@
 (let [uuid (.toString (java.util.UUID/randomUUID))
       _ (println "!!!!!!! Before muon")
       ms (component/start
-          (micro-service {:rabbit-url "amqp://localhost" #_:local
+          (micro-service {:rabbit-url #_"amqp://localhost" :local
                           :service-identifier uuid
                           :tags ["dummy" "test"]
                           :implementation (->TestMSImpl)}))
       _ (println "!!!!!!! After muon")]
-  (let [c (muon-client "amqp://localhost" #_:local (str uuid "-client")
+  (let [c (muon-client #_"amqp://localhost" :local (str uuid "-client")
                        "dummy" "test" "client")]
-    (let [get-val
+    (let [#_#_#_#_#_#_#_#_
+          get-val
           (with-muon c (request! (str "request://" uuid "/get-endpoint")
                                  {:test :ok}))
           _ (println "After get-val")
@@ -47,6 +48,7 @@
           (with-muon c (subscribe!
                          (str "stream://" uuid "/stream-test")))
           _ (println "After stream-channel")
+          #_#_#_#_#_#_#_#_#_#_
           stream-channel-order
           (with-muon c (subscribe!
                          (str "stream://" uuid "/stream-test")))
@@ -62,12 +64,13 @@
                                             {:val 1}))
                               (range 0 5))))]
       (println "!!!!!!!!!! All set")
-      (fact "Query works as expected"
+      #_#_(fact "Query works as expected"
             get-val => {:test "ok"})
       (fact "Post works as expected"
             post-val => {:val 2.0})
       (fact "First element retrieved from stream is the first element provided by the service"
             (<!! stream-channel) => {:val 1.0})
+      #_#_#_
       (fact "Stream results come ordered"
             (= not-ordered (sort-by :val not-ordered)) => true)
       (fact "Posting many times in a row works as expected"

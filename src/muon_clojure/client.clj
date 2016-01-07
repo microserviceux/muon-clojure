@@ -21,7 +21,7 @@
 
 (defn subscribe!
   [service-url & {:keys [from stream-type stream-name]
-                  :or {from (System/currentTimeMillis) stream-type :hot
+                  :or {from (System/currentTimeMillis) stream-type nil
                        stream-name "events"}}]
   (let [params (mcu/dekeywordize {:from (str from) :stream-type stream-type
                                   :stream-name stream-name})]

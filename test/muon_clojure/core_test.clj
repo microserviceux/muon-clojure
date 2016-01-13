@@ -14,7 +14,15 @@
     [{:endpoint "stream-test" :type :hot-cold
       :fn-process (fn [params]
                     (to-chan
-                     [{:val 1} {:val 2} {:val 3} {:val 4} {:val 5}]))}])
+                     [{:val 1} {:val 2} {:val 3} {:val 4} {:val 5}]))}
+     {:endpoint "stream-test-0" :type :hot-cold
+      :fn-process (fn [params]
+                    (to-chan
+                     []))}
+     {:endpoint "stream-test-1" :type :hot-cold
+      :fn-process (fn [params]
+                    (to-chan
+                     [{:val 1}]))}])
   MicroserviceRequest
   (request-mappings [this]
     [{:endpoint "post-endpoint"
@@ -42,11 +50,23 @@
           stream-channel
           (with-muon c (subscribe!
                          (str "stream://" uuid "/stream-test")))
+          stream-channel-0
+          (with-muon c (subscribe!
+                         (str "stream://" uuid "/stream-test-0")))
+          stream-channel-1
+          (with-muon c (subscribe!
+                         (str "stream://" uuid "/stream-test-1")))
           _ (println "After stream-channel")
           stream-channel-order
           (with-muon c (subscribe!
                          (str "stream://" uuid "/stream-test")))
           _ (println "After stream-channel-order")
+          not-ordered-0 (<!! (clojure.core.async/reduce
+                              (fn [prev n] (concat prev `(~n)))
+                              '() stream-channel-0))
+          not-ordered-1 (<!! (clojure.core.async/reduce
+                              (fn [prev n] (concat prev `(~n)))
+                              '() stream-channel-1))
           not-ordered (<!! (clojure.core.async/reduce
                              (fn [prev n] (concat prev `(~n)))
                              '() stream-channel-order))
@@ -65,6 +85,10 @@
             (<!! stream-channel) => {:val 1.0})
       (fact "Stream results come ordered"
             (= not-ordered (sort-by :val not-ordered)) => true)
+      (fact "There are 0 elements"
+            (count not-ordered-0) => 0)
+      (fact "There is 1 element"
+            (count not-ordered-1) => 1)
       (fact "There are 5 elements"
             (count not-ordered) => 5)
       (fact "Posting many times in a row works as expected"

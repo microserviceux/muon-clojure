@@ -8,6 +8,7 @@
   (:import (io.muoncore Muon MuonStreamGenerator)
            (io.muoncore.future MuonFuture ImmediateReturnFuture)
            (com.google.common.eventbus EventBus)
+           (java.util.function Predicate)
            (io.muoncore.extension.amqp.discovery AmqpDiscovery)
            (org.reactivestreams Publisher)
            (java.util Map)))
@@ -15,6 +16,7 @@
 (defprotocol MicroserviceStream (stream-mappings [this]))
 (defprotocol MicroserviceRequest (request-mappings [this]))
 (defprotocol ClientConnection
+  (wiretap [this])
   (request [this service-url params])
   (subscribe [this service-url params]))
 
@@ -57,6 +59,7 @@
               (log/info ":::::: Stream closed")
               (close! ch))
             (let [thrown? (instance? Throwable ev)]
+              (log/trace "Client received" (pr-str ev))
               (if thrown?
                 (do
                   (log/info (str "::::::::::::: Stream failed, resubscribing after "
@@ -70,6 +73,7 @@
 
 (defrecord Microservice [options]
   ClientConnection
+  (wiretap [this] (:wiretap this))
   (request [this service-url params]
     (impl-request (:muon this) service-url params))
   (subscribe [this service-url params]
@@ -78,26 +82,39 @@
   (start [component]
     (if (nil? (:muon component))
       (let [{:keys [rabbit-url service-identifier tags implementation]} options
-            muon-instance (mcu/muon-instance rabbit-url service-identifier tags)
-            muon (:muon muon-instance)]
+            muon-instance (mcc/muon-instance rabbit-url service-identifier tags)
+            muon (:muon muon-instance)
+            tc (.getTransportControl muon)
+            taps (if (:debug options)
+                   (let [tap (.tap tc
+                                   (reify Predicate (test [_ _] true)))
+                         ch (chan)]
+                     (.subscribe tap (rx/subscriber ch))
+                     {:wiretap ch :tap tap})
+                   {})]
+        (set! (. io.muoncore.channel.async.StandardAsyncChannel echoOut)
+              (true? (:debug options)))
         (when-not (nil? implementation)
           (if (satisfies? MicroserviceStream implementation)
             (expose-streams! muon (stream-mappings implementation)))
           (if (satisfies? MicroserviceRequest implementation)
             (expose-requests! muon (request-mappings implementation))))
-        (merge component muon-instance))
+        (merge component (merge muon-instance taps)))
       component))
   (stop [{:keys [muon discovery transport] :as component}]
     (if (nil? (:muon component))
       component
       (do
         (try
-          (.shutdown muon)
-          (.shutdown transport)
-          (.shutdown discovery)
-          (catch Exception e))
-        (merge component {:muon nil :discovery nil :transport nil})))))
+          (if-let [wiretap (:wiretap component)]
+            (close! wiretap))
+          (if-let [tap (:tap component)]
+            (.shutdown tap))
+          ;; TODO: Re-check if transport and discovery
+          ;;       have to be shut down
+          (.shutdown muon))
+        (merge component {:muon nil :discovery nil :transport nil
+                          :wiretap nil :tap nil})))))
 
 (defn micro-service [options]
   (map->Microservice {:options options}))
-

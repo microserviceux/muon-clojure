@@ -1,5 +1,6 @@
 (ns muon-clojure.client
   (:require [muon-clojure.utils :as mcu]
+            [muon-clojure.common :as mcc]
             [muon-clojure.server :as server]
             [clojure.tools.logging :as log])
   (:use clojure.java.data)
@@ -10,7 +11,7 @@
 (def ^:dynamic *muon-config* nil)
 
 (defn muon-client [url service-name & tags]
-  (let [muon-instance (mcu/muon-instance url service-name tags)
+  (let [muon-instance (mcc/muon-instance url service-name tags)
         client (server/map->Microservice muon-instance)]
     (Thread/sleep 2000)
     client))
@@ -32,4 +33,3 @@
   (let [item-json (mcu/dekeywordize params)]
     (log/info ":::::::: CLIENT REQUESTING" service-url item-json)
     (mcu/keywordize (into {} (server/request *muon-config* service-url item-json)))))
-

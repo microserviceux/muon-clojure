@@ -61,7 +61,7 @@
           (with-muon c (subscribe!
                          (str "stream://" uuid "/stream-test")))
           _ (println "After stream-channel-order")
-          _ (Thread/sleep 10000)
+          _ (Thread/sleep 20000)
           not-ordered-0 (<!! (clojure.core.async/reduce
                               (fn [prev n] (concat prev `(~n)))
                               '() stream-channel-0))

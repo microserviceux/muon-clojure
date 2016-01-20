@@ -31,68 +31,60 @@
      {:endpoint "get-endpoint"
       :fn-process (fn [resource] {:test :ok})}]))
 
-(let [uuid (.toString (java.util.UUID/randomUUID))
-      ms (component/start
-          (micro-service {:rabbit-url #_"amqp://localhost" :local
-                          :service-identifier uuid
-                          :tags ["dummy" "test"]
-                          :implementation (->TestMSImpl)}))]
-  (let [c (muon-client #_"amqp://localhost" :local (str uuid "-client")
-                       "dummy" "test" "client")]
-    (let [get-val
-          (with-muon c (request! (str "request://" uuid "/get-endpoint")
-                                 {:test :ok}))
-          _ (println "After get-val")
-          post-val
-          (with-muon c (request! (str "request://" uuid "/post-endpoint")
-                                 {:val 1}))
-          _ (println "After post-val")
-          stream-channel
-          (with-muon c (subscribe!
-                         (str "stream://" uuid "/stream-test")))
-          stream-channel-0
-          (with-muon c (subscribe!
-                         (str "stream://" uuid "/stream-test-0")))
-          stream-channel-1
-          (with-muon c (subscribe!
-                         (str "stream://" uuid "/stream-test-1")))
-          _ (println "After stream-channel")
-          stream-channel-order
-          (with-muon c (subscribe!
-                         (str "stream://" uuid "/stream-test")))
-          _ (println "After stream-channel-order")
-          _ (Thread/sleep 20000)
-          not-ordered-0 (<!! (clojure.core.async/reduce
-                              (fn [prev n] (concat prev `(~n)))
-                              '() stream-channel-0))
-          not-ordered-1 (<!! (clojure.core.async/reduce
-                              (fn [prev n] (concat prev `(~n)))
-                              '() stream-channel-1))
-          not-ordered (<!! (clojure.core.async/reduce
-                             (fn [prev n] (concat prev `(~n)))
-                             '() stream-channel-order))
-          _ (println "After not-ordered")
-          post-many-vals
-          (with-muon c (doall
-                         (map (fn [_]
-                                (request! (str "request://" uuid "/post-endpoint")
-                                            {:val 1}))
-                              (range 0 5))))]
-      (fact "Query works as expected"
-            get-val => {:test "ok"})
-      (fact "Post works as expected"
-            post-val => {:val 2.0})
-      (fact "First element retrieved from stream is the first element provided by the service"
-            (<!! stream-channel) => {:val 1.0})
-      (fact "Stream results come ordered"
-            (= not-ordered (sort-by :val not-ordered)) => true)
-      (fact "There are 0 elements"
-            (count not-ordered-0) => 0)
-      (fact "There is 1 element"
-            (count not-ordered-1) => 1)
-      (fact "There are 5 elements"
-            (count not-ordered) => 5)
-      (fact "Posting many times in a row works as expected"
-            post-many-vals => (take 5 (repeat {:val 2.0})))
-      (println not-ordered)))
-  (component/stop ms))
+(defn ch->seq [ch]
+  (<!! (clojure.core.async/reduce
+        (fn [prev n] (concat prev `(~n))) '() ch)))
+
+(defn endpoint->ch [c uuid endpoint]
+  (with-muon c (subscribe!
+                (str "stream://" uuid "/" endpoint))))
+
+(def uuid (.toString (java.util.UUID/randomUUID)))
+(def ms (component/start
+         (micro-service {:rabbit-url #_"amqp://localhost" :local
+                         :service-identifier uuid
+                         :tags ["dummy" "test"]
+                         :implementation (->TestMSImpl)})))
+(def c (muon-client #_"amqp://localhost" :local (str uuid "-client")
+                    "dummy" "test" "client"))
+
+(defn post-val [uuid]
+  (request! (str "request://" uuid "/post-endpoint") {:val 1}))
+
+(defn post-vals [c uuid n]
+  (let [s (repeatedly #(post-val uuid))]
+    (with-muon c (doall (take n s)))))
+
+(defn sample [f]
+  (key (first (sort-by val (frequencies (take 10 (repeatedly f)))))))
+
+(let [get-val
+      (with-muon c (request! (str "request://" uuid "/get-endpoint")
+                             {:test :ok}))
+      post-val
+      (with-muon c (request! (str "request://" uuid "/post-endpoint")
+                             {:val 1}))]
+  (fact "Query works as expected" get-val => {:test "ok"})
+  (fact "Post works as expected" post-val => {:val 2.0}))
+
+(fact "First element retrieved from stream is the first element provided by the service"
+      (sample #(<!! (endpoint->ch c uuid "stream-test")))
+      => {:val 1.0})
+(fact "Stream results come ordered"
+      (sample #(let [not-ordered (ch->seq (endpoint->ch c uuid "stream-test"))]
+                 (= not-ordered (sort-by :val not-ordered))))
+      => true)
+(fact "There are 0 elements"
+      (sample #(count (ch->seq (endpoint->ch c uuid "stream-test-0"))))
+      => 0)
+(fact "There is 1 element"
+      (sample #(count (ch->seq (endpoint->ch c uuid "stream-test-1"))))
+      => 1)
+(fact "There are 5 elements"
+      (sample #(count (ch->seq (endpoint->ch c uuid "stream-test"))))
+      => 5)
+(fact "Posting many times in a row works as expected"
+      (sample #(post-vals c uuid 5)) => (take 5 (repeat {:val 2.0})))
+
+(component/stop c)
+(component/stop ms)

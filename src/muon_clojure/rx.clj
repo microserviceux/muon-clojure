@@ -9,17 +9,18 @@
   (reify Subscription
     (request [this n]
       (log/trace "::::: SUBSCRIPTION" s ":: request" n)
-      (loop [remaining n]
-        (when-not (= 0 remaining)
-          (if-let [item (<!! ch)]
-            (do
-              (log/trace "onNext" (dekeywordize item))
-              (.onNext s (dekeywordize item))
-              (recur (dec remaining)))
-            (do
-              (log/debug "::::::::::::: SUBSCRIBER" s "closing channel...")
-              (close! ch)
-              (.onComplete s))))))
+      (go
+        (loop [remaining n]
+          (when-not (= 0 remaining)
+            (if-let [item (<! ch)]
+              (do
+                (log/trace "onNext" (dekeywordize item))
+                (.onNext s (dekeywordize item))
+                (recur (dec remaining)))
+              (do
+                (log/debug "::::::::::::: SUBSCRIBER" s "closing channel...")
+                (close! ch)
+                (.onComplete s)))))))
     (cancel [this]
       (close! ch))))
 
@@ -32,28 +33,17 @@
            sobj (subscription s ch)]
        (.onSubscribe s sobj)))))
 
-(def open-subs (ref {}))
-
 (defn subscriber [ch]
   (reify Subscriber
     (^void onSubscribe [this ^Subscription s]
-     (dosync (alter open-subs assoc this s))
      (log/info "onSubscribe" s)
-     (.request s 1))
+     (.request s Long/MAX_VALUE))
     (^void onNext [this ^Object obj]
      (log/debug "onNext:::::::::::: CLIENTSIDE[" (.hashCode this) "]" obj)
-     (go (>! ch obj))
-     (let [s (get @open-subs this)]
-       (.request s 1)))
+     (>!! ch obj))
     (^void onError [this ^Throwable t]
-     (go (>! ch t))
-     (let [s (get @open-subs this)]
-       (.cancel s))
-     (dosync (alter open-subs dissoc this))
-     (log/info "onError" (.getMessage t)))
+     (log/info "onError" (.getMessage t))
+     (>!! ch t))
     (^void onComplete [this]
      (close! ch)
-     (let [s (get @open-subs this)]
-       (.cancel s))
-     (dosync (alter open-subs dissoc this))
      (log/info "onComplete"))))

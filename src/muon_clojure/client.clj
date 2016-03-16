@@ -12,7 +12,7 @@
 
 (defn muon-client [url service-name & tags]
   (let [muon-instance (mcc/muon-instance url service-name tags)
-        client (server/map->Microservice muon-instance)]
+        client (server/map->Microservice {:muon muon-instance})]
     (Thread/sleep 2000)
     client))
 

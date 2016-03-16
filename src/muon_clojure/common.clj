@@ -6,7 +6,7 @@
             [muon-clojure.rx :as rx])
   (:import (java.util LinkedList)
            (com.google.common.eventbus EventBus)
-           (io.muoncore SingleTransportMuon MuonStreamGenerator)
+           (io.muoncore MuonBuilder MultiTransportMuon MuonStreamGenerator)
            (io.muoncore.codec.json JsonOnlyCodecs)
            (io.muoncore.config AutoConfiguration)
            (io.muoncore.memory.discovery InMemDiscovery)
@@ -20,7 +20,7 @@
            (io.muoncore.extension.amqp.rabbitmq09
             RabbitMq09ClientAmqpConnection RabbitMq09QueueListenerFactory)
            (io.muoncore Muon MuonStreamGenerator)
-           (io.muoncore.future MuonFuture ImmediateReturnFuture MuonFutures)
+           (io.muoncore.api MuonFuture ImmediateReturnFuture)
            (io.muoncore.extension.amqp.discovery AmqpDiscovery)
            (org.reactivestreams Publisher)
            (io.muoncore.protocol.reactivestream
@@ -75,33 +75,51 @@
 (def local-event-bus (EventBus.))
 (def local-discovery (InMemDiscovery.))
 
-(defmulti muon-instance (fn [x _ _] x))
+(defn muon-from-config [config]
+  (.build (MuonBuilder/withConfig config)))
 
-(defmethod muon-instance :local [url service-name tags]
+(defn muon-local [url service-name tags]
   (let [config (doto (AutoConfiguration.)
                  (.setServiceName service-name)
-                 (.setAesEncryptionKey "abcde12345678906")
                  (.setTags (LinkedList. tags)))
         muon-transport (InMemTransport. config local-event-bus)
-        muon (SingleTransportMuon. config local-discovery muon-transport)]
-    {:muon muon :discovery local-discovery :transport muon-transport}))
+        muon (MultiTransportMuon. config local-discovery [muon-transport])]
+    muon))
 
-(defmethod muon-instance :default [url service-name tags]
+(defn create-discovery [url]
   (let [connection (RabbitMq09ClientAmqpConnection. url)
-        queue-factory (RabbitMq09QueueListenerFactory.
-                       (.getChannel connection))
-        discovery (AmqpDiscovery. queue-factory connection
-                                  (ServiceCache.) (JsonOnlyCodecs.))]
-    (.start discovery)
-    (Thread/sleep 5000)
-    (let [service-queue (DefaultServiceQueue. service-name connection)
-          channel-factory (DefaultAmqpChannelFactory.
-                            service-name queue-factory connection)
-          muon-transport (AMQPMuonTransport.
-                          url service-queue channel-factory)
-          config (doto (AutoConfiguration.)
-                   (.setServiceName service-name)
-                   (.setAesEncryptionKey "abcde12345678906")
-                   (.setTags (LinkedList. tags)))
-          muon (SingleTransportMuon. config discovery muon-transport)]
-      {:muon muon :discovery discovery :transport muon-transport})))
+        queue-factory
+        (RabbitMq09QueueListenerFactory. (.getChannel connection))
+        codecs (JsonOnlyCodecs.)
+        discovery
+        (AmqpDiscovery. queue-factory connection (ServiceCache.) codecs)]
+    (.start discovery)))
+
+(defn muon-amqp [url service-name tags]
+  (let [connection (RabbitMq09ClientAmqpConnection. url)
+        queue-factory
+        (RabbitMq09QueueListenerFactory. (.getChannel connection))
+        service-queue (DefaultServiceQueue. service-name connection)
+        channel-factory
+        (DefaultAmqpChannelFactory. service-name queue-factory connection)
+        discovery (create-discovery url)
+        channel-factory (DefaultAmqpChannelFactory.
+                         service-name queue-factory connection)
+        muon-transport (AMQPMuonTransport.
+                        url service-queue channel-factory)
+        config (doto (AutoConfiguration.)
+                 (.setServiceName service-name)
+                 (.setTags (LinkedList. tags)))
+        muon (MultiTransportMuon. config discovery [muon-transport])]
+    muon))
+
+(defn muon-instance
+  ([url service-name tags]
+   (muon-instance {:url url :service-name service-name :tags tags}))
+  ([options]
+   (if (contains? options :config)
+     (muon-from-config (:config options))
+     (let [{:keys [url service-name tags]} options]
+       (if (or (nil? url) (= url :local))
+         (muon-local url service-name tags)
+         (muon-amqp url service-name tags))))))

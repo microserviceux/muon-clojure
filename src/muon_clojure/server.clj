@@ -7,10 +7,9 @@
             [muon-clojure.utils :as mcu])
   (:import (io.muoncore Muon MuonStreamGenerator)
            (io.muoncore.exception MuonException)
-           (io.muoncore.future MuonFuture ImmediateReturnFuture)
+           (io.muoncore.api MuonFuture ImmediateReturnFuture)
            (com.google.common.eventbus EventBus)
            (java.util.function Predicate)
-           (io.muoncore.extension.amqp.discovery AmqpDiscovery)
            (org.reactivestreams Publisher)
            (java.util Map)))
 
@@ -91,9 +90,8 @@
   component/Lifecycle
   (start [component]
     (if (nil? (:muon component))
-      (let [{:keys [rabbit-url service-identifier tags implementation]} options
-            muon-instance (mcc/muon-instance rabbit-url service-identifier tags)
-            muon (:muon muon-instance)
+      (let [implementation (:implementation options)
+            muon (mcc/muon-instance options)
             tc (.getTransportControl muon)
             debug? (true? (:debug options))
             taps (if debug?
@@ -110,9 +108,9 @@
             (expose-streams! muon (stream-mappings implementation)))
           (if (satisfies? MicroserviceRequest implementation)
             (expose-requests! muon (request-mappings implementation))))
-        (merge component (merge muon-instance taps)))
+        (merge component (assoc taps :muon muon)))
       component))
-  (stop [{:keys [muon discovery transport] :as component}]
+  (stop [{:keys [muon] :as component}]
     (if (nil? (:muon component))
       component
       (do
@@ -124,8 +122,7 @@
           ;; TODO: Re-check if transport and discovery
           ;;       have to be shut down
           (.shutdown muon))
-        (merge component {:muon nil :discovery nil :transport nil
-                          :wiretap nil :tap nil})))))
+        (merge component {:muon nil :wiretap nil :tap nil})))))
 
 (defn micro-service [options]
   (map->Microservice {:options (assoc options :debug false)}))

@@ -42,7 +42,7 @@
 (def uuid (.toString (java.util.UUID/randomUUID)))
 (def ms (component/start
          (micro-service {:rabbit-url #_"amqp://localhost" :local
-                         :service-identifier uuid
+                         :service-name uuid
                          :tags ["dummy" "test"]
                          :implementation (->TestMSImpl)})))
 (def c (muon-client #_"amqp://localhost" :local (str uuid "-client")

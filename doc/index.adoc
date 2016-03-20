@@ -1,5 +1,10 @@
+---
+---
+:title: Muon Clojure
+:layout: documentation
 :source-highlighter: pygments
+:toc: right
 
-= Muon Clojure
+= Muon Clojure docs
 
 Muon Clojure is just awesome and clojurific

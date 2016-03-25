@@ -1,10 +1,13 @@
 ---
+layout: documentation
 ---
 :title: Muon Clojure
-:layout: documentation
+:date: 2015-01-05 11:40
 :source-highlighter: pygments
 :toc: right
+:toc-title: Muon Clojure
+:toclevels: 6
 
-= Muon Clojure docs
+# Muon Java
 
-Muon Clojure is just awesome and clojurific
+include::clojure/SNAPSHOT/intro.adoc[leveloffset=+1]

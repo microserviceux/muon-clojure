@@ -93,7 +93,8 @@
         codecs (JsonOnlyCodecs.)
         discovery
         (AmqpDiscovery. queue-factory connection (ServiceCache.) codecs)]
-    (.start discovery)))
+    (.start discovery)
+    discovery))
 
 (defn muon-amqp [url service-name tags]
   (let [connection (RabbitMq09ClientAmqpConnection. url)

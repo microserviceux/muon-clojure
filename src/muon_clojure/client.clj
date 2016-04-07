@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log])
   (:use clojure.java.data)
   (:import (io.muoncore.protocol.requestresponse Response)
+           (io.muoncore.exception MuonException)
            (org.reactivestreams Publisher)
            (java.util Map)
            (io.muoncore.protocol.event.client DefaultEventClient)
@@ -14,10 +15,16 @@
 
 (defn muon-client [url service-name & tags]
   (let [muon-instance (mcc/muon-instance url service-name tags)
+        ec (try
+             ;; TODO: Make event client handling smarter
+             (DefaultEventClient. muon-instance)
+             (catch MuonException e
+               (log/info (str "Eventstore not found, "
+                              "event functionality not available!"))
+               nil))
         client (server/map->Microservice
-                {:muon muon-instance
-                 :event-client (DefaultEventClient. muon-instance)})]
-    (Thread/sleep 2000)
+                {:muon muon-instance :event-client ec})]
+    #_(Thread/sleep 2000)
     client))
 
 (defmacro with-muon [muon & body]
@@ -25,9 +32,12 @@
      ~@body))
 
 (defn event! [{:keys [stream-name id parent-id service-id payload event-type]}]
-  (let [ev (Event. stream-name event-type id parent-id service-id
-                   (mcu/dekeywordize payload))]
-    (.event (:event-client *muon-config*) ev)))
+  ;; TODO: Make event client handling smarter
+  (if-let [ec (:event-client *muon-config*)]
+    (let [ev (Event. stream-name event-type id parent-id service-id
+                     (mcu/dekeywordize payload))]
+      (.event ec ev))
+    (throw (UnsupportedOperationException. "Eventstore not available"))))
 
 (defn subscribe!
   [service-url & {:keys [from stream-type stream-name]

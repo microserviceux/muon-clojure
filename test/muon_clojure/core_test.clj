@@ -8,6 +8,8 @@
             [clojure.core.async :refer [to-chan <!!]])
   (:import (com.google.common.eventbus EventBus)))
 
+(def events (ref []))
+
 (defrecord TestMSImpl []
   MicroserviceStream
   (stream-mappings [this]
@@ -29,7 +31,10 @@
       :fn-process (fn [resource]
                     {:val (inc (:val resource))})}
      {:endpoint "get-endpoint"
-      :fn-process (fn [resource] {:test :ok})}]))
+      :fn-process (fn [resource] {:test :ok})}])
+  MicroserviceEvent
+  (handle-event [this event]
+    (dosync (alter events conj event))))
 
 (defn ch->seq [ch]
   (<!! (clojure.core.async/reduce
@@ -43,7 +48,7 @@
 (def ms (component/start
          (micro-service {:rabbit-url #_"amqp://localhost" :local
                          :service-name uuid
-                         :tags ["dummy" "test"]
+                         :tags ["dummy" "test" "eventstore"]
                          :implementation (->TestMSImpl)})))
 (def c (muon-client #_"amqp://localhost" :local (str uuid "-client")
                     "dummy" "test" "client"))
@@ -85,6 +90,11 @@
       => 5)
 (fact "Posting many times in a row works as expected"
       (sample #(post-vals c uuid 5)) => (take 5 (repeat {:val 2.0})))
+(with-muon c (event! {:stream-name "test" :payload {:hello true}}))
+(fact "If we send an event using the event protocol, it is properly received"
+      (first @events) =>
+      {:stream-name "test" :id nil :parent-id nil
+       :service-id nil :payload {:hello true} :event-type nil})
 
 (component/stop c)
 (component/stop ms)

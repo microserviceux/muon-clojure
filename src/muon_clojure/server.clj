@@ -7,7 +7,11 @@
             [muon-clojure.utils :as mcu])
   (:import (io.muoncore Muon MuonStreamGenerator)
            (io.muoncore.exception MuonException)
+           (io.muoncore.protocol.event.client DefaultEventClient)
            (io.muoncore.api MuonFuture ImmediateReturnFuture)
+           (io.muoncore.channel ChannelConnection
+                                ChannelConnection$ChannelFunction)
+           (io.muoncore.protocol.event.server EventServerProtocolStack)
            (com.google.common.eventbus EventBus)
            (java.util.function Predicate)
            (org.reactivestreams Publisher)
@@ -15,6 +19,7 @@
 
 (defprotocol MicroserviceStream (stream-mappings [this]))
 (defprotocol MicroserviceRequest (request-mappings [this]))
+(defprotocol MicroserviceEvent (handle-event [this event]))
 (defprotocol ClientConnection
   (wiretap [this])
   (request [this service-url params])
@@ -80,6 +85,20 @@
         (log/trace "Subscription ended")))
     ch))
 
+(defn channel-function [implementation]
+  (reify ChannelConnection$ChannelFunction
+    (apply [_ event-wrapper]
+      (let [event-raw (.getEvent event-wrapper)
+            event {:stream-name (.getStreamName event-raw)
+                   :id (.getId event-raw)
+                   :parent-id (.getParentId event-raw)
+                   :service-id (.getServiceId event-raw)
+                   :payload (mcu/keywordize
+                             (into {} (.getPayload event-raw)))
+                   :event-type (.getEventType event-raw)}]
+        (handle-event implementation event)
+        (.persisted event-wrapper)))))
+
 (defrecord Microservice [options]
   ClientConnection
   (wiretap [this] (:wiretap this))
@@ -100,15 +119,21 @@
                          ch (chan 1024)]
                      (.subscribe tap (rx/subscriber ch))
                      {:wiretap ch :tap tap})
-                   {})]
+                   {})
+            ec (DefaultEventClient. muon)]
         (set! (. io.muoncore.channel.async.StandardAsyncChannel echoOut)
               debug?)
         (when-not (nil? implementation)
           (if (satisfies? MicroserviceStream implementation)
             (expose-streams! muon (stream-mappings implementation)))
           (if (satisfies? MicroserviceRequest implementation)
-            (expose-requests! muon (request-mappings implementation))))
-        (merge component (assoc taps :muon muon)))
+            (expose-requests! muon (request-mappings implementation)))
+          (if (satisfies? MicroserviceEvent implementation)
+            (let [handler (channel-function implementation)
+                  event-stack (EventServerProtocolStack.
+                               handler (.getCodecs muon))]
+              (.registerServerProtocol (.getProtocolStacks muon) event-stack))))
+        (merge component (merge taps {:muon muon :event-client ec})))
       component))
   (stop [{:keys [muon] :as component}]
     (if (nil? (:muon component))
@@ -122,7 +147,8 @@
           ;; TODO: Re-check if transport and discovery
           ;;       have to be shut down
           (.shutdown muon))
-        (merge component {:muon nil :wiretap nil :tap nil})))))
+        (merge component {:muon nil :wiretap nil
+                          :event-client nil :tap nil})))))
 
 (defn micro-service [options]
   (map->Microservice {:options (assoc options :debug false)}))

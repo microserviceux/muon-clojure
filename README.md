@@ -6,7 +6,7 @@ A Clojure client/server library for interacting with Muon microservices.
 
 `muon-clojure` is deployed in clojars.org:
 
-`[io.muoncore/muon-clojure "5.3.4"]`
+`[io.muoncore/muon-clojure "6.4-20160412105345"]`
 
 ## Usage
 
@@ -24,29 +24,39 @@ To import the library:
 (def m (muon-client "amqp://mq-url" "service-name" "tag1" "tag2" "tag3"))
 ```
 
-#### Sending a command
+#### Sending a query or command
 
 ```clojure
-(with-muon m (post-event "muon://target-service/endpoint" "target-stream" {:foo "bar"}))
-```
-
-#### Querying
-
-```clojure
-(with-muon m (query-event "muon://target-service/endpoint" {:param-1 "baz"}))
+(with-muon m (request! "request://target-service/endpoint" {:foo "bar"}))
 ```
 
 #### Subscribe to a stream
 
 ```clojure
-(require [clojure.core.async :as async :refer [go <!]])
+(require '[clojure.core.async :as async :refer [go <!]])
 
-(let [ch (with-muon m (stream-subscription "muon://target-service/endpoint"
-                        :from 0
-                        :stream-type "hot-cold"
-                        :stream-name "my-stream"))]
+(let [ch (with-muon m (subscribe! "stream://target-service/endpoint"
+                                  :from 0
+                                  :stream-type "hot-cold"
+                                  :stream-name "my-stream"))]
   (go (loop [elem (<! ch)] (println (pr-str elem)) (recur (<! ch)))))
 ```
+
+#### Send an event to an eventstore
+
+NOTE: This functionality is only available if there is an eventstore available subscribed to the same AMQP server. If you see the following message when initialising the client
+
+```
+INFO  client:6 - Eventstore not found, event functionality not available!
+```
+
+then the calls to `(event)` won't be successful.
+
+```clojure
+(with-muon m (event! {:event-type "type" :stream-name "my-stream" :payload {:my :data}}))
+```
+
+For an explanation of the possible fields of the event, please refer to [https://github.com/microserviceux/documentation/blob/master/implementmuon/protocol/event/v1.adoc](https://github.com/microserviceux/documentation/blob/master/implementmuon/protocol/event/v1.adoc).
 
 ## License
 

@@ -1,8 +1,7 @@
 (ns muon-clojure.core-test
   (:use midje.sweet)
-  (:use muon-clojure.client)
+  (:use muon-clojure.core)
   (:require [clojure.test :refer :all]
-            [muon-clojure.server :refer :all]
             [muon-clojure.common :as mcc]
             [com.stuartsierra.component :as component]
             [clojure.core.async :refer [to-chan <!!]])

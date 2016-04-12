@@ -122,8 +122,7 @@
                          ch (chan 1024)]
                      (.subscribe tap (rx/subscriber ch))
                      {:wiretap ch :tap tap})
-                   {})
-            ec (DefaultEventClient. muon)]
+                   {})]
         (set! (. io.muoncore.channel.async.StandardAsyncChannel echoOut)
               debug?)
         (when-not (nil? implementation)
@@ -136,7 +135,7 @@
                   event-stack (EventServerProtocolStack.
                                handler (.getCodecs muon))]
               (.registerServerProtocol (.getProtocolStacks muon) event-stack))))
-        (merge component (merge taps {:muon muon :event-client ec})))
+        (merge component (merge taps {:muon muon})))
       component))
   (stop [{:keys [muon] :as component}]
     (if (nil? (:muon component))
@@ -150,8 +149,7 @@
           ;; TODO: Re-check if transport and discovery
           ;;       have to be shut down
           (.shutdown muon))
-        (merge component {:muon nil :wiretap nil
-                          :event-client nil :tap nil})))))
+        (merge component {:muon nil :wiretap nil :tap nil})))))
 
 (defn micro-service [options]
   (map->Microservice {:options (assoc options :debug false)}))

@@ -89,15 +89,18 @@
   (reify ChannelConnection$ChannelFunction
     (apply [_ event-wrapper]
       (let [event-raw (.getEvent event-wrapper)
-            event {:stream-name (.getStreamName event-raw)
-                   :id (.getId event-raw)
-                   :parent-id (.getParentId event-raw)
-                   :service-id (.getServiceId event-raw)
+            event {:event-type (.getEventType event-raw)
+                   :stream-name (.getStreamName event-raw)
+                   :schema (.getSchema event-raw)
+                   :caused-by (.getCausedById event-raw)
+                   :caused-by-relation (.getCausedByRelation event-raw)
+                   :service-id (.getService event-raw)
+                   :order-id (.getOrderId event-raw)
+                   :event-time (.getEventTime event-raw)
                    :payload (mcu/keywordize
-                             (into {} (.getPayload event-raw)))
-                   :event-type (.getEventType event-raw)}]
-        (handle-event implementation event)
-        (.persisted event-wrapper)))))
+                             (into {} (.getPayload event-raw)))}
+            {:keys [order-id event-time]} (handle-event implementation event)]
+        (.persisted event-wrapper order-id event-time)))))
 
 (defrecord Microservice [options]
   ClientConnection

@@ -34,7 +34,10 @@
       :fn-process (fn [resource] {:test :ok})}])
   MicroserviceEvent
   (handle-event [this event]
-    (dosync (alter events conj event))))
+    (let [t (System/currentTimeMillis)
+          ev (merge event {:order-id (* 1000 t) :event-time t})]
+      (dosync (alter events conj ev))
+      ev)))
 
 (defn ch->seq [ch]
   (<!! (clojure.core.async/reduce
@@ -91,10 +94,17 @@
 (fact "Posting many times in a row works as expected"
       (sample #(post-vals c uuid 5)) => (take 5 (repeat {:val 2.0})))
 (with-muon c (event! {:stream-name "test" :payload {:hello true}}))
-(fact "If we send an event using the event protocol, it is properly received"
-      (first @events) =>
-      {:stream-name "test" :id nil :parent-id nil
-       :service-id nil :payload {:hello true} :event-type nil})
+(facts "If we send an event using the event protocol, it is properly received"
+       (let [ev (first @events)]
+         (fact ev => (contains {:stream-name "test"
+                                :service-id (str uuid "-client")
+                                :payload {:hello true}}))
+         (fact (:order-id ev) => (roughly (* 1000 (System/currentTimeMillis))))
+         (fact (:event-time ev) => (roughly (System/currentTimeMillis)))
+         (fact (keys ev) => (just #{:event-type :stream-name :schema
+                                    :caused-by :caused-by-relation
+                                    :service-id :order-id :event-time
+                                    :payload}))))
 
 (component/stop c)
 (component/stop ms)

@@ -9,7 +9,7 @@
            (org.reactivestreams Publisher)
            (java.util Map)
            (io.muoncore.protocol.event.client DefaultEventClient)
-           (io.muoncore.protocol.event Event)))
+           (io.muoncore.protocol.event ClientEvent)))
 
 (def ^:dynamic *muon-config* nil)
 
@@ -31,11 +31,13 @@
   `(binding [*muon-config* ~muon]
      ~@body))
 
-(defn event! [{:keys [stream-name id parent-id service-id payload event-type]}]
+(defn event! [{:keys [event-type stream-name schema caused-by
+                      caused-by-relation #_service-id payload]}]
   ;; TODO: Make event client handling smarter
   (if-let [ec (:event-client *muon-config*)]
-    (let [ev (Event. stream-name event-type id parent-id service-id
-                     (mcu/dekeywordize payload))]
+    (let [ev (ClientEvent. event-type stream-name schema caused-by
+                           caused-by-relation #_service-id
+                           (mcu/dekeywordize payload))]
       (.event ec ev))
     (throw (UnsupportedOperationException. "Eventstore not available"))))
 

@@ -6,7 +6,7 @@ A Clojure client/server library for interacting with Muon microservices.
 
 `muon-clojure` is deployed in clojars.org:
 
-`[io.muoncore/muon-clojure "6.4-20160412105345"]`
+`[io.muoncore/muon-clojure "6.4-20160412105346"]`
 
 ## Usage
 
@@ -15,7 +15,7 @@ A Clojure client/server library for interacting with Muon microservices.
 To import the library:
 
 ```clojure
-(use 'muon-clojure.client)
+(use 'muon-clojure.core)
 ```
 
 #### Creating a muon client
@@ -35,11 +35,10 @@ To import the library:
 ```clojure
 (require '[clojure.core.async :as async :refer [go <!]])
 
-(let [ch (with-muon m (subscribe! "stream://target-service/endpoint"
-                                  :from 0
-                                  :stream-type "hot-cold"
-                                  :stream-name "my-stream"))]
-  (go (loop [elem (<! ch)] (println (pr-str elem)) (recur (<! ch)))))
+(let [ch (with-muon ms (subscribe! "stream://my-server/stream1"))]
+  (go (loop [elem (<! ch)]
+        (when-not (nil? elem)
+          (println (pr-str elem)) (recur (<! ch))))))
 ```
 
 #### Send an event to an eventstore
@@ -64,7 +63,7 @@ In order to run a microservice in server mode, you will need to provide an imple
 
 ### Providing an implementation
 
-An implementation of a microservice endpoints consists in a reification of the `muon-clojure.server/[MicroserviceStream,MicroserviceEvent,MicroserviceRequest]` protocols. Each of them is optional, and they serve different purposes:
+An implementation of a microservice endpoints consists in a reification of the `muon-clojure.core/[MicroserviceStream,MicroserviceEvent,MicroserviceRequest]` protocols. Each of them is optional, and they serve different purposes:
 
 * `MicroserviceStream` allows to expose subscription endpoints that should return a channel.
 * `MicroserviceEvent` allows to expose an endpoint that will process (e.g. store) an event. These endpoints, in order to be compliant with the Muon Event protocol, should return the same event with an `order-id` and `event-time` filled. Please check the [https://github.com/microserviceux/documentation/blob/master/implementmuon/protocol/event/v1.adoc](schema docs).
@@ -73,29 +72,66 @@ An implementation of a microservice endpoints consists in a reification of the `
 Example:
 
 ```clojure
-(require '[muon-clojure.server :as mcs])
-
 (defrecord MyMicroservice [my-params]
-  mcs/MicroserviceStream
+  MicroserviceStream
   (stream-mappings [this]
     [{:endpoint "stream1" :type :cold
       :fn-process (fn [params]
                     (clojure.core.async/to-chan [{:val 1} {:val 2}]))}
-     {:endpoint "stream" :type :hot-cold
+     {:endpoint "stream2" :type :hot-cold
       :fn-process (fn [params]
                     (clojure.core.async/to-chan [{:val 1} {:val 2}]))}])
-  mcs/MicroserviceEvent
+  MicroserviceEvent
   (handle-event [this event]
-    (do #_something)
+    (println "Event received!")
     (merge event {:order-id 1 :event-time 1}))
-  mcs/MicroserviceRequest
+  MicroserviceRequest
   (request-mappings [this]
-    [{:endpoint "projection"
+    [{:endpoint "echo"
       ;; As an example, we return the same payload that we receive
       :fn-process identity}]))
 ```
 
+### Starting the microservice
 
+In order to start the microservice, we have to provide some parameters and call `component/start`:
+
+```clojure
+(def params {:url "amqp://mq-url"
+             :service-name "my-server"
+             :tags ["tag4" "tag5"]
+             :implementation (MyMicroservice. {:record :params})})
+(def ms (com.stuartsierra.component/start (micro-service params)))
+```
+
+The microservice can be properly shut down by calling stop:
+
+```(component/stop ms)```
+
+### Using the server as a client
+
+The microservice server in `muon-clojure` is a client at its core, so it can be used as a client as well:
+
+```clojure
+(with-muon ms (request! "request://my-server/echo" {:bar "baz"}))
+=> {:bar "baz"}
+
+(with-muon ms (event! {}))
+=> Event received!
+=> {:order-id 1, :event-time 1}
+
+(with-muon ms (event! {:stream-name "test"}))
+=> Event received!
+=> {:stream-name "test", :order-id 1, :event-time 1}
+
+(require '[clojure.core.async :as async :refer [go <!]])
+(let [ch (with-muon ms (subscribe! "stream://my-server/stream1"))]
+  (go (loop [elem (<! ch)]
+        (when-not (nil? elem)
+          (println (pr-str elem)) (recur (<! ch))))))
+=> {:val 1.0}
+=> {:val 2.0}
+```
 
 ## License
 

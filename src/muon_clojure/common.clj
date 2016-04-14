@@ -68,9 +68,12 @@
      (^void handle [this ^RequestWrapper query-event]
       (log/trace "handle" (pr-str query-event))
       (let [resource (mcu/keywordize
-                      (into {} (-> query-event .getRequest .getPayload)))]
+                      (into {} (-> query-event .getRequest .getPayload)))
+            res (res-fn resource)
+            res (if (map? res) res {:_muon_wrapped_value res})]
+        ;; TODO: Remove the need for wrapping values!
         (log/trace "on-request" (pr-str resource))
-        (.ok query-event (mcu/dekeywordize (res-fn resource))))))))
+        (.ok query-event (mcu/dekeywordize res)))))))
 
 (def local-event-bus (EventBus.))
 (def local-discovery (InMemDiscovery.))

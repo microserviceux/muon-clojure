@@ -30,7 +30,9 @@
       :fn-process (fn [resource]
                     {:val (inc (:val resource))})}
      {:endpoint "get-endpoint"
-      :fn-process (fn [resource] {:test :ok})}])
+      :fn-process (fn [resource] {:test :ok})}
+     {:endpoint "get-num-endpoint"
+      :fn-process (fn [resource] 3.14)}])
   MicroserviceEvent
   (handle-event [this event]
     (let [t (System/currentTimeMillis)
@@ -68,10 +70,15 @@
 (let [get-val
       (with-muon c (request! (str "request://" uuid "/get-endpoint")
                              {:test :ok}))
+      get-num-val
+      (with-muon c (request! (str "request://" uuid "/get-num-endpoint")
+                             {:test :ok}))
       post-val
       (with-muon c (request! (str "request://" uuid "/post-endpoint")
                              {:val 1}))]
   (fact "Query works as expected" get-val => {:test "ok"})
+  (fact "Query works as expected for non-map types"
+        get-num-val => 3.14)
   (fact "Post works as expected" post-val => {:val 2.0}))
 
 (fact "First element retrieved from stream is the first element provided by the service"

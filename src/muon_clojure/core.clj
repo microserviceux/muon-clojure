@@ -209,6 +209,10 @@
     (subscribe *muon-config* service-url params)))
 
 (defn request! [service-url params]
-  (let [item-json (mcu/dekeywordize params)]
+  (let [item-json (mcu/dekeywordize params)
+        payload (mcu/keywordize
+                 (into {} (request *muon-config* service-url item-json)))
+        payload (if (contains? payload :_muon_wrapped_value)
+                  (:_muon_wrapped_value payload) payload)]
     (log/info ":::::::: CLIENT REQUESTING" service-url item-json)
-    (mcu/keywordize (into {} (request *muon-config* service-url item-json)))))
+    payload))

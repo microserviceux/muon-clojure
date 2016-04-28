@@ -41,10 +41,10 @@
 
 (defn impl-request [muon service-url params]
   (log/trace (pr-str params))
-  (let [response (.request muon service-url params Map)]
+  (let [response (.request muon service-url params)]
     (log/trace "Response:" (pr-str response))
     (let [got-response (.get response)
-          payload (.getPayload got-response)]
+          payload (.getPayload got-response Map)]
       (log/trace "Response payload:" (pr-str payload))
       payload)))
 
@@ -145,7 +145,8 @@
           (if (satisfies? MicroserviceEvent implementation)
             (let [handler (channel-function implementation)
                   event-stack (EventServerProtocolStack.
-                               handler (.getCodecs (:muon muon)))]
+                               handler (.getCodecs (:muon muon))
+                               (.getDiscovery (:muon muon)))]
               (.registerServerProtocol
                (.getProtocolStacks (:muon muon)) event-stack))))
         (merge component (merge taps muon)))

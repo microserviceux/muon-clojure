@@ -23,15 +23,14 @@
            (io.muoncore.api MuonFuture ImmediateReturnFuture)
            (io.muoncore.extension.amqp.discovery AmqpDiscovery)
            (org.reactivestreams Publisher)
-           (io.muoncore.protocol.reactivestream
+           (io.muoncore.protocol.reactivestream.messages
             ReactiveStreamSubscriptionRequest)
            (io.muoncore.protocol.reactivestream.server
             PublisherLookup$PublisherType
             ReactiveStreamServerHandlerApi$PublisherGenerator)
            (io.muoncore.protocol.requestresponse.server
             RequestResponseServerHandlerApi$Handler
-            RequestWrapper
-            HandlerPredicates)
+            RequestWrapper HandlerPredicates)
            (java.util Map)))
 
 (def type-mappings {:hot-cold PublisherLookup$PublisherType/HOT_COLD
@@ -63,15 +62,17 @@
   (.handleRequest
    muon
    (HandlerPredicates/path (str "/" endpoint-name))
-   Map
    (reify RequestResponseServerHandlerApi$Handler
      (^void handle [this ^RequestWrapper query-event]
+      (log/info "handle" (pr-str query-event))
       (log/trace "handle" (pr-str query-event))
-      (let [resource (mcu/keywordize
-                      (into {} (-> query-event .getRequest .getPayload)))
+      (let [resource
+            (mcu/keywordize
+             (into {} (-> query-event .getRequest (.getPayload Object))))
             res (res-fn resource)
             res (if (map? res) res {:_muon_wrapped_value res})]
         ;; TODO: Remove the need for wrapping values!
+        (log/info "on-request" (pr-str resource))
         (log/trace "on-request" (pr-str resource))
         (.ok query-event (mcu/dekeywordize res)))))))
 

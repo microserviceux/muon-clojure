@@ -114,3 +114,26 @@
 
 (component/stop c)
 (component/stop ms)
+
+(let [uuid (.toString (java.util.UUID/randomUUID))
+      ms (component/start
+          (micro-service {:rabbit-url #_"amqp://localhost" :local
+                          :service-name uuid
+                          :tags ["dummy" "test" "eventstore"]
+                          :implementation (->TestMSImpl)}))
+      c (muon-client #_"amqp://localhost" :local (str uuid "-client")
+                     "dummy" "test" "client")
+      get-val
+      (with-muon c (request! (str "request://" uuid "/get-endpoint")
+                             {:test :ok}))
+      get-num-val
+      (with-muon c (request! (str "request://" uuid "/get-num-endpoint")
+                             {:test :ok}))
+      post-val
+      (with-muon c (request! (str "request://" uuid "/post-endpoint")
+                             {:val 1}))]
+  (fact "Query works as expected" get-val => {:test "ok"})
+  (fact "Query works as expected for non-map types"
+        get-num-val => 3.14)
+  (fact "Post works as expected" post-val => {:val 2.0})
+  (component/stop ms))

@@ -1,8 +1,8 @@
-(defproject io.muoncore/muon-clojure "7.0-20160503141208"
+(defproject io.muoncore/muon-clojure "7.0-20160503141209"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :license {:name "Apache License, Version 2.0"
+            :url "http://www.apache.org/licenses/LICENSE-2.0"}
   :repositories [["snapshots"
                   {:url
                    "https://simplicityitself.artifactoryonline.com/simplicityitself/muon/"

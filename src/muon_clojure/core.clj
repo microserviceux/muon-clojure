@@ -186,13 +186,11 @@
     ec
     (let [new-ec (try
                    ;; TODO: Make event client handling smarter
-                   (println "3")
                    (DefaultEventClient. (:muon *muon-config*))
                    (catch MuonException e
                      (log/info (str "Eventstore not found, "
                                     "event functionality not available!"))
                      nil))]
-      (println "4")
       (swap! (:event-client *muon-config*) (fn [_] new-ec))
       new-ec)))
 
@@ -200,15 +198,11 @@
                       caused-by-relation #_service-id payload]
                :as event}]
   ;; TODO: Make event client handling smarter
-  (println "0")
   (if-let [ec (event-client *muon-config*)]
-    (let [_ (println "1")
-          ev (ClientEvent. event-type stream-name schema caused-by
+    (let [ev (ClientEvent. event-type stream-name schema caused-by
                                 caused-by-relation #_service-id
                                 (mcu/dekeywordize payload))
-          _ (println "2")
           res (.event ec ev)]
-      (println "3")
       (merge event {:order-id (.getOrderId res)
                     :event-time (.getEventTime res)}))
     (throw (UnsupportedOperationException. "Eventstore not available"))))
@@ -224,9 +218,9 @@
 
 (defn request! [service-url params]
   (let [item-json (mcu/dekeywordize params)
+        _ (log/info ":::::::: CLIENT REQUESTING" service-url item-json)
         payload (mcu/keywordize
                  (into {} (request *muon-config* service-url item-json)))
         payload (if (contains? payload :_muon_wrapped_value)
                   (:_muon_wrapped_value payload) payload)]
-    (log/info ":::::::: CLIENT REQUESTING" service-url item-json)
     payload))

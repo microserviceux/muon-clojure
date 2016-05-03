@@ -1,4 +1,5 @@
 (ns muon-clojure.core
+  (:gen-class)
   (:require [muon-clojure.utils :as mcu]
             [muon-clojure.common :as mcc]
             [clojure.tools.logging :as log]
@@ -171,15 +172,8 @@
 
 (defn muon-client [url service-name & tags]
   (let [muon-instance (mcc/muon-instance url service-name tags)
-        ec (try
-             ;; TODO: Make event client handling smarter
-             (DefaultEventClient. muon-instance)
-             (catch MuonException e
-               (log/info (str "Eventstore not found, "
-                              "event functionality not available!"))
-               nil))
         client (map->Microservice
-                {:muon muon-instance :event-client ec})]
+                {:muon muon-instance :event-client (atom nil)})]
     #_(Thread/sleep 2000)
     client))
 
@@ -187,15 +181,34 @@
   `(binding [*muon-config* ~muon]
      ~@body))
 
+(defn event-client [mc]
+  (if-let [ec @(:event-client *muon-config*)]
+    ec
+    (let [new-ec (try
+                   ;; TODO: Make event client handling smarter
+                   (println "3")
+                   (DefaultEventClient. (:muon *muon-config*))
+                   (catch MuonException e
+                     (log/info (str "Eventstore not found, "
+                                    "event functionality not available!"))
+                     nil))]
+      (println "4")
+      (swap! (:event-client *muon-config*) (fn [_] new-ec))
+      new-ec)))
+
 (defn event! [{:keys [event-type stream-name schema caused-by
                       caused-by-relation #_service-id payload]
                :as event}]
   ;; TODO: Make event client handling smarter
-  (if-let [ec (:event-client *muon-config*)]
-    (let [ev (ClientEvent. event-type stream-name schema caused-by
-                           caused-by-relation #_service-id
-                           (mcu/dekeywordize payload))
+  (println "0")
+  (if-let [ec (event-client *muon-config*)]
+    (let [_ (println "1")
+          ev (ClientEvent. event-type stream-name schema caused-by
+                                caused-by-relation #_service-id
+                                (mcu/dekeywordize payload))
+          _ (println "2")
           res (.event ec ev)]
+      (println "3")
       (merge event {:order-id (.getOrderId res)
                     :event-time (.getEventTime res)}))
     (throw (UnsupportedOperationException. "Eventstore not available"))))
@@ -211,9 +224,11 @@
 
 (defn request! [service-url params]
   (let [item-json (mcu/dekeywordize params)
+        _ (log/info ":::::::: CLIENT REQUESTING" service-url item-json)
         payload (mcu/keywordize
                  (into {} (request *muon-config* service-url item-json)))
         payload (if (contains? payload :_muon_wrapped_value)
                   (:_muon_wrapped_value payload) payload)]
-    (log/info ":::::::: CLIENT REQUESTING" service-url item-json)
     payload))
+
+

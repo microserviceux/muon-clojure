@@ -5,18 +5,19 @@
   "Converts the keys in a map from keywords to strings."
   [m]
   (if (map? m)
-    (apply merge
-           (map (fn [[k v]] {(if (keyword? k)
-                               (name k)
-                               (str k))
-                             (if (map? v)
-                               (dekeywordize v)
-                               (if (sequential? v)
-                                 (into (empty v) (map dekeywordize v))
-                                 (if (keyword? v)
-                                   (name v)
-                                   v)))})
-                m))
+    (into {}
+          (apply merge
+                 (map (fn [[k v]] {(if (keyword? k)
+                                     (name k)
+                                     (str k))
+                                   (if (map? v)
+                                     (dekeywordize v)
+                                     (if (sequential? v)
+                                       (into (empty v) (map dekeywordize v))
+                                       (if (keyword? v)
+                                         (name v)
+                                         v)))})
+                      m)))
     (if (sequential? m)
       (into (empty m) (map dekeywordize m))
       (if (keyword? m)

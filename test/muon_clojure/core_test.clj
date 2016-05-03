@@ -58,7 +58,7 @@
                     "dummy" "test" "client"))
 
 (defn post-val [uuid]
-  (request! (str "request://" uuid "/post-endpoint") {:val 1}))
+  (request! (str "rpc://" uuid "/post-endpoint") {:val 1}))
 
 (defn post-vals [c uuid n]
   (let [s (repeatedly #(post-val uuid))]
@@ -68,13 +68,13 @@
   (key (first (sort-by val (frequencies (take 10 (repeatedly f)))))))
 
 (let [get-val
-      (with-muon c (request! (str "request://" uuid "/get-endpoint")
+      (with-muon c (request! (str "rpc://" uuid "/get-endpoint")
                              {:test :ok}))
       get-num-val
-      (with-muon c (request! (str "request://" uuid "/get-num-endpoint")
+      (with-muon c (request! (str "rpc://" uuid "/get-num-endpoint")
                              {:test :ok}))
       post-val
-      (with-muon c (request! (str "request://" uuid "/post-endpoint")
+      (with-muon c (request! (str "rpc://" uuid "/post-endpoint")
                              {:val 1}))]
   (fact "Query works as expected" get-val => {:test "ok"})
   (fact "Query works as expected for non-map types"
@@ -124,13 +124,13 @@
       c (muon-client #_"amqp://localhost" :local (str uuid "-client")
                      "dummy" "test" "client")
       get-val
-      (with-muon c (request! (str "request://" uuid "/get-endpoint")
+      (with-muon c (request! (str "rpc://" uuid "/get-endpoint")
                              {:test :ok}))
       get-num-val
-      (with-muon c (request! (str "request://" uuid "/get-num-endpoint")
+      (with-muon c (request! (str "rpc://" uuid "/get-num-endpoint")
                              {:test :ok}))
       post-val
-      (with-muon c (request! (str "request://" uuid "/post-endpoint")
+      (with-muon c (request! (str "rpc://" uuid "/post-endpoint")
                              {:val 1}))]
   (fact "Query works as expected" get-val => {:test "ok"})
   (fact "Query works as expected for non-map types"

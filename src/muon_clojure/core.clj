@@ -105,8 +105,11 @@
                    :event-time (.getEventTime event-raw)
                    :payload (mcu/keywordize
                              (into {} (.getPayload event-raw)))}
-            {:keys [order-id event-time]} (handle-event implementation event)]
-        (.persisted event-wrapper order-id event-time)))))
+            {:keys [order-id event-time] :as rich-event}
+            (handle-event implementation event)]
+        (if (contains? rich-event :error)
+          (.failed event-wrapper (:error rich-event))
+          (.persisted event-wrapper order-id event-time))))))
 
 (declare muon-client)
 
@@ -202,9 +205,13 @@
     (let [ev (ClientEvent. event-type stream-name schema caused-by
                                 caused-by-relation #_service-id
                                 (mcu/dekeywordize payload))
-          res (.event ec ev)]
-      (merge event {:order-id (.getOrderId res)
-                    :event-time (.getEventTime res)}))
+          res (.event ec ev)
+          order-id (.getOrderId res)
+          event-time (.getEventTime res)]
+      (if (and (= 0 event-time) (= 0 order-id))
+        (throw (MuonException. "Event not posted"))
+        (merge event {:order-id (.getOrderId res)
+                      :event-time (.getEventTime res)})))
     (throw (UnsupportedOperationException. "Eventstore not available"))))
 
 (defn subscribe!
@@ -224,3 +231,5 @@
         payload (if (contains? payload :_muon_wrapped_value)
                   (:_muon_wrapped_value payload) payload)]
     payload))
+
+

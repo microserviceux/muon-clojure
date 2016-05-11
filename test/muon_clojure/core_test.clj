@@ -5,7 +5,9 @@
             [muon-clojure.common :as mcc]
             [com.stuartsierra.component :as component]
             [clojure.core.async :refer [to-chan <!!]])
-  (:import (com.google.common.eventbus EventBus)))
+  (:import (com.google.common.eventbus EventBus)
+           (java.util LinkedList)
+           (io.muoncore.config AutoConfiguration)))
 
 (def events (ref []))
 
@@ -123,6 +125,39 @@
                           :implementation (->TestMSImpl)}))
       c (muon-client #_"amqp://localhost" :local (str uuid "-client")
                      "dummy" "test" "client")
+      get-val
+      (with-muon c (request! (str "rpc://" uuid "/get-endpoint")
+                             {:test :ok}))
+      get-num-val
+      (with-muon c (request! (str "rpc://" uuid "/get-num-endpoint")
+                             {:test :ok}))
+      post-val
+      (with-muon c (request! (str "rpc://" uuid "/post-endpoint")
+                             {:val 1}))]
+  (fact "Query works as expected" get-val => {:test "ok"})
+  (fact "Query works as expected for non-map types"
+        get-num-val => 3.14)
+  (fact "Post works as expected" post-val => {:val 2.0})
+  (component/stop ms))
+
+(let [uuid (.toString (java.util.UUID/randomUUID))
+      config (doto (AutoConfiguration.)
+               (.setServiceName uuid)
+               (.setTags (LinkedList. ["dummy" "test" "eventstore"])))
+      _ (.put (.getProperties config) "muon.discovery.factories"
+              "io.muoncore.discovery.InMemDiscoveryFactory")
+      _ (.put (.getProperties config) "muon.transport.factories"
+              "io.muoncore.transport.InMemTransportFactory")
+      ms (component/start (micro-service {:config config
+                                          :implementation (->TestMSImpl)}))
+      config (doto (AutoConfiguration.)
+               (.setServiceName (str uuid "-client"))
+               (.setTags (LinkedList. ["dummy" "test" "client"])))
+      _ (.put (.getProperties config) "muon.discovery.factories"
+              "io.muoncore.discovery.InMemDiscoveryFactory")
+      _ (.put (.getProperties config) "muon.transport.factories"
+              "io.muoncore.transport.InMemTransportFactory")
+      c (component/start (micro-service {:config config}))
       get-val
       (with-muon c (request! (str "rpc://" uuid "/get-endpoint")
                              {:test :ok}))

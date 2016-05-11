@@ -128,9 +128,8 @@
                              (satisfies? MicroserviceEvent implementation))
                       (update options :tags conj "eventstore")
                       options)
-            muon (apply muon-client
-                        (:url options) (:service-name options) (:tags options))
-            tc (.getTransportControl (:muon muon))
+            muon (mcc/muon-instance options)
+            tc (.getTransportControl muon)
             debug? (true? (:debug options))
             taps (if debug?
                    (let [tap (.tap tc
@@ -143,17 +142,17 @@
               debug?)
         (when-not (nil? implementation)
           (if (satisfies? MicroserviceStream implementation)
-            (expose-streams! (:muon muon) (stream-mappings implementation)))
+            (expose-streams! muon (stream-mappings implementation)))
           (if (satisfies? MicroserviceRequest implementation)
-            (expose-requests! (:muon muon) (request-mappings implementation)))
+            (expose-requests! muon (request-mappings implementation)))
           (if (satisfies? MicroserviceEvent implementation)
             (let [handler (channel-function implementation)
                   event-stack (EventServerProtocolStack.
-                               handler (.getCodecs (:muon muon))
-                               (.getDiscovery (:muon muon)))]
+                               handler (.getCodecs muon)
+                               (.getDiscovery muon))]
               (.registerServerProtocol
-               (.getProtocolStacks (:muon muon)) event-stack))))
-        (merge component (merge taps muon)))
+               (.getProtocolStacks muon) event-stack))))
+        (merge component taps {:muon muon :event-client (atom nil)}))
       component))
   (stop [{:keys [muon] :as component}]
     (if (nil? (:muon component))
@@ -174,11 +173,10 @@
   (map->Microservice {:options (assoc options :debug false)}))
 
 (defn muon-client [url service-name & tags]
-  (let [muon-instance (mcc/muon-instance url service-name tags)
-        client (map->Microservice
-                {:muon muon-instance :event-client (atom nil)})]
-    #_(Thread/sleep 2000)
-    client))
+  (component/start (map->Microservice
+                    {:options {:url url
+                               :service-name service-name
+                               :tags tags}})))
 
 (defmacro with-muon [muon & body]
   `(binding [*muon-config* ~muon]
@@ -231,5 +229,3 @@
         payload (if (contains? payload :_muon_wrapped_value)
                   (:_muon_wrapped_value payload) payload)]
     payload))
-
-

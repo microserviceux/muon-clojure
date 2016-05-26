@@ -213,11 +213,13 @@
     (throw (UnsupportedOperationException. "Eventstore not available"))))
 
 (defn subscribe!
-  [service-url & {:keys [from stream-type stream-name]
-                  :or {from (System/currentTimeMillis) stream-type nil
-                       stream-name "events"}}]
-  (let [params (mcu/dekeywordize {:from (str from) :stream-type stream-type
-                                  :stream-name stream-name})]
+  [service-url {:keys [from stream-type stream-name]
+                :or {from (System/currentTimeMillis) stream-type nil
+                     stream-name "events"}
+                :as params}]
+  (let [params (mcu/dekeywordize
+                 (merge params {:from (str from) :stream-type stream-type
+                                :stream-name stream-name} ))]
     (log/info ":::::::: CLIENT SUBSCRIBING" service-url params)
     (subscribe *muon-config* service-url params)))
 

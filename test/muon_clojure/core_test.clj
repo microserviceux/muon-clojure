@@ -47,8 +47,7 @@
         (fn [prev n] (concat prev `(~n))) '() ch)))
 
 (defn endpoint->ch [c uuid endpoint]
-  (with-muon c (subscribe!
-                (str "stream://" uuid "/" endpoint))))
+  (with-muon c (subscribe! (str "stream://" uuid "/" endpoint) {})))
 
 (def uuid (.toString (java.util.UUID/randomUUID)))
 (def ms (component/start

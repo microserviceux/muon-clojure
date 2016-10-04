@@ -138,8 +138,6 @@
                      (.subscribe tap (rx/subscriber ch))
                      {:wiretap ch :tap tap})
                    {})]
-        (set! (. io.muoncore.channel.async.StandardAsyncChannel echoOut)
-              debug?)
         (when-not (nil? implementation)
           (if (satisfies? MicroserviceStream implementation)
             (expose-streams! muon (stream-mappings implementation)))

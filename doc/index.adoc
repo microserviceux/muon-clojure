@@ -3,11 +3,18 @@ layout: documentation
 ---
 :title: Muon Clojure
 :date: 2015-01-05 11:40
+:comments: true
+:sharing: true
 :source-highlighter: pygments
 :toc: right
-:toc-title: Muon Clojure
+:toc-title: Muon Java
 :toclevels: 6
 
-# Muon Java
+:includedir: .
+ifdef::env-doc[]
+:includedir: submodules/clojure/doc
+endif::[]
 
-include::clojure/SNAPSHOT/intro.adoc[leveloffset=+1]
+## Muon Clojure
+
+include::{includedir}/intro.adoc[leveloffset=+1]

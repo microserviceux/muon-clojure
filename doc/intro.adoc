@@ -1,4 +1,2 @@
 
-= Muon Clojure!
-
 Muon Clojure is just awesome and clojurific

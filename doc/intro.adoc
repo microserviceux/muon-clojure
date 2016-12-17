@@ -1,2 +1,0 @@
-
-Muon Clojure is just awesome and clojurific

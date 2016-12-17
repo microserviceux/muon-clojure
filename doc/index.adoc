@@ -15,6 +15,9 @@ ifdef::env-doc[]
 :includedir: submodules/clojure/doc
 endif::[]
 
+TIP: This document is maintained at https://github.com/muoncore/muon-clojure.
+Please submit issues at that repository.
+
 ## Muon Clojure
 
 A Clojure client/server library for building and interacting with Muon microservices.

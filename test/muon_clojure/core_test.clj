@@ -51,7 +51,7 @@
 
 (def uuid (.toString (java.util.UUID/randomUUID)))
 (def ms (component/start
-         (micro-service {:rabbit-url #_"amqp://localhost" :local
+         (micro-service {:url #_"amqp://localhost" :local
                          :service-name uuid
                          :tags ["dummy" "test" "eventstore"]
                          :implementation (->TestMSImpl)})))

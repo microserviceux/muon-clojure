@@ -1,4 +1,4 @@
-(defproject io.muoncore/muon-clojure "7.1.3"
+(defproject io.muoncore/muon-clojure "7.1.5"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Apache License, Version 2.0"
@@ -14,15 +14,15 @@
   :main muon-clojure.core
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/tools.logging "0.3.1"]
-                 [com.google.code.gson/gson "2.7"]
+                 [com.google.code.gson/gson "2.8.0"]
                  [org.clojure/core.async "0.2.395"]
-                 [org.slf4j/slf4j-log4j12 "1.7.21"]
+                 [org.slf4j/slf4j-log4j12 "1.7.22"]
                  [org.reactivestreams/reactive-streams "1.0.0.final"]
                  [org.clojure/java.data "0.1.1"]
                  [midje "1.8.3"]
-                 [com.stuartsierra/component "0.3.1"]
-                 [io.muoncore/muon-core "7.1.3"]
-                 [io.muoncore/muon-event "7.1.3"]
-                 [io.muoncore/muon-transport-amqp "7.1.3"]
-                 [io.muoncore/muon-discovery-amqp "7.1.3"]]
+                 [com.stuartsierra/component "0.3.2"]
+                 [io.muoncore/muon-core "7.1.5"]
+                 [io.muoncore/muon-event "7.1.5"]
+                 [io.muoncore/muon-transport-amqp "7.1.5"]
+                 [io.muoncore/muon-discovery-amqp "7.1.5"]]
   :plugins [[lein-midje "3.2"]])

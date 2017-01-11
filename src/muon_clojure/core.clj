@@ -150,6 +150,7 @@
                                (.getDiscovery muon))]
               (.registerServerProtocol
                (.getProtocolStacks muon) event-stack))))
+        (.blockUntilReady (.getDiscovery muon))
         (merge component taps {:muon muon :event-client (atom nil)}))
       component))
   (stop [{:keys [muon] :as component}]

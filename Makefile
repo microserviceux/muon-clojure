@@ -1,4 +1,11 @@
 
+.PHONY: test
 
-install:
-	echo "Not installing muon clojure, need to decide how"
+
+install: target
+
+target:
+	./build.sh
+
+test:
+	lein midje

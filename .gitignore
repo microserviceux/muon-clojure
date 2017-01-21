@@ -1,17 +1,8 @@
-*.orig
-*.swp
-*~
-/target
-/classes
-/checkouts
-pom.xml
-pom.xml.asc
-*.jar
-*.class
-/.lein-*
-/.nrepl-port
-.hgignore
-.hg/
-/bin/
-tempdocumentation/
-/.DS_Store
+leinbin/
+target/
+git staus
+*.iml
+*.ipr
+*.iws
+.settings
+.idea/

@@ -18,6 +18,4 @@ export LEIN_ROOT=1
 echo $PATH
 
 which lein
-lein do cljsbuild once, deps
-
-mv "$(lein uberjar | sed -n 's/^Created \(.*standalone\.jar\)/\1/p')" app-standalone.jar
+lein deps

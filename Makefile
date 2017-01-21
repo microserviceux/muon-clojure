@@ -7,5 +7,5 @@ install: target
 target:
 	./build.sh
 
-test:
+test: target
 	lein midje

@@ -1,24 +1,27 @@
 (ns muon-clojure.rx-test
   (:require [muon-clojure.rx :as rx]
-            [clojure.core.async :refer [chan to-chan <!! go-loop <! >!]]
+            [clojure.core.async :refer [chan to-chan <!! go-loop
+                                        sliding-buffer <! >! close!]]
             [midje.sweet :as midje]))
 
 (defn plug-subscriber [p]
   (let [res (chan 1)
-        ch (chan)
+        ch (chan (sliding-buffer 1024))
         s (rx/subscriber ch)]
     (.subscribe p s)
     (go-loop [elem (<! ch)]
-      (if (= elem 1000)
+      (if (= elem 1)
         (>! res true)
         (do
           (println (.hashCode s) elem)
           (recur (<! ch)))))
     (when (<!! res)
+      (close! ch)
+      (close! res)
       (println (.hashCode s) "has finished"))))
 
-(let [p (rx/publisher (fn [_] (to-chan (range))) nil)]
+(let [p (rx/publisher (fn [_] (to-chan (range 20))) nil)]
   (dorun (map #(do
                  (println "!!!!!!!!!!!! TESTING" %)
                  (dorun (map (fn [_] (plug-subscriber p)) (range %))))
-              (range))))
+              (range 20))))

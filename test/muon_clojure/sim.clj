@@ -23,18 +23,18 @@
 
 (def uuid (.toString (java.util.UUID/randomUUID)))
 (def ms (component/start
-         (micro-service {:url "amqp://localhost" #_:local
+         (micro-service {:url #_"amqp://localhost" :local
                          :service-name uuid
                          :debug true
                          :tags ["dummy" "test" "eventstore"]
                          :implementation (->TestMSImpl)})))
-(def c (muon-client "amqp://localhost" #_:local (str uuid "-client")
+(def c (muon-client #_"amqp://localhost" :local (str uuid "-client")
                     "dummy" "test" "client"))
 
 (defn post-val [uuid]
   (request! (str "rpc://" uuid "/post-endpoint") {:val 1}))
 
-(let [ch-server (:wiretap ms)
+#_(let [ch-server (:wiretap ms)
       ch-client (:wiretap c)]
   (go-loop [elem (<! ch-server)]
     (when-not (nil? elem)
@@ -45,13 +45,13 @@
       (println "CH-CLIENT::::" elem)
       (recur (<! ch-client)))))
 
-#_(let [ch1 (with-muon c (subscribe! (str "stream://" uuid "/stream-test")
+(let [ch1 (with-muon c (subscribe! (str "stream://" uuid "/stream-test")
                                    {:stream-type :hot}))
       v1 (<!! ch1)
-      _ (close! ch1)
       ch2 (with-muon c (subscribe! (str "stream://" uuid "/stream-test")
                                    {:stream-type :hot}))
       v2 (<!! ch2)]
+  (println "!!!!!!!!!!!!!! v1v2")
   (fact "v1" v1 => {:val 0.0})
   (fact "v2" v2 => {:val 0.0}))
 

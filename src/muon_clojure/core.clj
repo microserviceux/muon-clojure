@@ -9,7 +9,6 @@
   (:use clojure.java.data)
   (:import (io.muoncore.protocol.requestresponse Response)
            (io.muoncore.exception MuonException)
-           (org.reactivestreams Publisher)
            (io.muoncore.protocol.event.client DefaultEventClient)
            (io.muoncore.protocol.event ClientEvent)
            (io.muoncore Muon MuonStreamGenerator)
@@ -17,6 +16,7 @@
            (io.muoncore.channel ChannelConnection
                                 ChannelConnection$ChannelFunction)
            (io.muoncore.protocol.event.server EventServerProtocolStack)
+           (io.muoncore.channel.impl StandardAsyncChannel)
            (com.google.common.eventbus EventBus)
            (java.util.function Predicate)
            (java.util Map)))
@@ -61,33 +61,46 @@
   (let [uri (params->uri service-url params)
         ch (chan 1024)] ;; TODO: Increase this number?
     (go
+      (log/trace "Creating failsafe channel")
       (let [failsafe-ch (chan)]
-        (.subscribe muon uri Map (rx/subscriber failsafe-ch))
-        (log/trace "Starting processing loop for" (.hashCode failsafe-ch))
-        (loop [ev (<! failsafe-ch) timeout 1]
-          (log/trace "Arrived" ev "for" (.hashCode failsafe-ch))
-          (if (nil? ev)
-            (do
-              (log/info ":::::: Stream closed")
-              (close! failsafe-ch)
-              (close! ch))
-            (let [thrown? (instance? Throwable ev)]
-              (>! ch (mcu/keywordize ev))
-              (log/trace "Client received" (pr-str ev))
-              (if thrown?
-                (if (and (instance? MuonException ev)
-                         (= (.getMessage ev) "Stream does not exist"))
-                  (do
-                    (log/info "Stream does not exist, shutting down")
-                    (close! failsafe-ch)
-                    (close! ch))
-                  (do
-                    (log/info (str "::::::::::::: Stream failed, resubscribing after "
-                                   timeout "ms..."))
-                    (Thread/sleep timeout)
-                    (.subscribe muon uri Map (rx/subscriber failsafe-ch))
-                    (recur (<! failsafe-ch) (* 2 timeout))))
-                (recur (<! failsafe-ch) 1)))))
+        (log/trace "Subscribing...")
+        (try
+          (let [sbr (rx/subscriber failsafe-ch)]
+            (log/trace "We have a subscriber object")
+            (.subscribe muon uri Map sbr)
+            (log/trace "Starting processing loop for" (.hashCode failsafe-ch))
+            (loop [ev (<! failsafe-ch) timeout 1]
+              (log/trace "Arrived" ev "for" (.hashCode failsafe-ch))
+              (if (nil? ev)
+                (do
+                  (log/info ":::::: Stream closed")
+                  (close! failsafe-ch)
+                  (close! ch))
+                (let [thrown? (instance? Throwable ev)]
+                  (if (>! ch (mcu/keywordize ev))
+                    (do
+                      (log/trace "Client received" (pr-str ev))
+                      (if thrown?
+                        (if (and (instance? MuonException ev)
+                                 (= (.getMessage ev) "Stream does not exist"))
+                          (do
+                            (log/info "Stream does not exist, shutting down")
+                            (close! failsafe-ch)
+                            (close! ch))
+                          (do
+                            (log/info (str "::::::::::::: Stream failed, resubscribing after "
+                                           timeout "ms..."))
+                            (Thread/sleep timeout)
+                            (.subscribe muon uri Map (rx/subscriber failsafe-ch))
+                            (recur (<! failsafe-ch) (* 2 timeout))))
+                        (recur (<! failsafe-ch) 1)))
+                    (do
+                      (log/info ":::::: Subscription channel has been closed from outside!")
+                      (close! failsafe-ch)
+                      (.onComplete sbr)))))))
+          (catch Throwable t
+            (log/trace "Error in subscription:" (.getMessage t))
+            (.printStackTrace t)))
         (log/trace "Subscription ended")))
     ch))
 
@@ -164,16 +177,19 @@
             (.shutdown tap))
           ;; TODO: Re-check if transport and discovery
           ;;       have to be shut down
-          (.shutdown muon))
+          (.shutdown muon)
+          (catch Exception e
+            (log/debug "Something wrong when stopping:" (.getMessage e))))
         (merge component {:muon nil :event-client nil
                           :wiretap nil :tap nil})))))
 
 (defn micro-service [options]
-  (map->Microservice {:options (assoc options :debug false)}))
+  (map->Microservice {:options options}))
 
 (defn muon-client [url service-name & tags]
   (component/start (map->Microservice
                     {:options {:url url
+                               :debug true
                                :service-name service-name
                                :tags tags}})))
 

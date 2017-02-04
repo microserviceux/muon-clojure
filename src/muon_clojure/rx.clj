@@ -31,6 +31,7 @@
      (log/info "subscribe::::::::: SUBSCRIBER" s)
      (let [ch (gen-fn (keywordize params))
            sobj (subscription s ch)]
+       (log/info "Assigned channel:" (.hashCode ch))
        (.onSubscribe s sobj)))))
 
 (defn subscriber [ch]
@@ -39,11 +40,13 @@
      (log/info "onSubscribe" s)
      (.request s Long/MAX_VALUE))
     (^void onNext [this ^Object obj]
-     (log/debug "onNext:::::::::::: CLIENTSIDE[" (.hashCode this) "]" obj)
-     (>!! ch obj))
+     (log/debug "onNext:::::::::::: CLIENTSIDE[-> " (.hashCode ch)
+                "][" (.hashCode this) "]" obj)
+     (let [res (>!! ch obj)]
+       (log/trace "Push:" res)))
     (^void onError [this ^Throwable t]
      (log/info "onError" (.getMessage t))
      (>!! ch t))
     (^void onComplete [this]
-     (close! ch)
-     (log/info "onComplete"))))
+     (log/info "onComplete")
+     (close! ch))))

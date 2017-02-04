@@ -44,6 +44,7 @@
    (reify ReactiveStreamServerHandlerApi$PublisherGenerator
      (^Publisher generatePublisher
       [this ^ReactiveStreamSubscriptionRequest request]
+      (log/trace "generatePublisher")
       (let [params (into {} (.getArgs request))
             res (get params "stream-type" (:stream-type params))
             stream-type (if (or (nil? res)

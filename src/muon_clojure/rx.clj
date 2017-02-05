@@ -57,10 +57,8 @@
              (when-not (nil? @active-s)
                (log/debug "onNext:::::::::::: CLIENTSIDE[-> " (.hashCode ch)
                           "][" (.hashCode this) "]" obj)
-               (println "count" (count buf))
                (let [res (>!! ch obj)]
                  (log/trace "Push:" res)
-                 (println "post count" (count buf))
                  (dosync
                   (alter requested dec)
                   (if res

@@ -13,16 +13,11 @@
     (go-loop [elem (<! ch)]
       (if (= elem (* N 3))
         (>! res true)
-        (do
-          (println (.hashCode s) elem)
-          (recur (<! ch)))))
+        (recur (<! ch))))
     (when (<!! res)
       (close! ch)
-      (close! res)
-      (println (.hashCode s) "has finished"))))
+      (close! res))))
 
 (let [p (rx/publisher (fn [_] (to-chan (range 100))) nil)]
-  (dorun (map #(do
-                 (println "!!!!!!!!!!!! TESTING" %)
-                 (dorun (map (fn [_] (plug-subscriber p)) (range %))))
+  (dorun (map #(do (dorun (map (fn [_] (plug-subscriber p)) (range %))))
               (range 20))))

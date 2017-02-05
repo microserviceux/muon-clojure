@@ -1,4 +1,4 @@
-(defproject io.muoncore/muon-clojure "7.1.5-2"
+(defproject io.muoncore/muon-clojure "7.1.5-3"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Apache License, Version 2.0"

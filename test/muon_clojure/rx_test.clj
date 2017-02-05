@@ -6,11 +6,12 @@
 
 (defn plug-subscriber [p]
   (let [res (chan 1)
-        ch (chan (sliding-buffer 1024))
-        s (rx/subscriber ch)]
+        ch (chan)
+        N 16
+        [s ch] (rx/subscriber N)]
     (.subscribe p s)
     (go-loop [elem (<! ch)]
-      (if (= elem 1)
+      (if (= elem (* N 3))
         (>! res true)
         (do
           (println (.hashCode s) elem)
@@ -20,7 +21,7 @@
       (close! res)
       (println (.hashCode s) "has finished"))))
 
-(let [p (rx/publisher (fn [_] (to-chan (range 20))) nil)]
+(let [p (rx/publisher (fn [_] (to-chan (range 100))) nil)]
   (dorun (map #(do
                  (println "!!!!!!!!!!!! TESTING" %)
                  (dorun (map (fn [_] (plug-subscriber p)) (range %))))

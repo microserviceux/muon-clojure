@@ -2,7 +2,9 @@
   (:use muon-clojure.utils)
   (:require [clojure.tools.logging :as log]
             [clojure.core.async :refer [go-loop go <! >! <!! >!!
-                                        chan buffer close!]])
+                                        chan buffer close! put!]]
+            [clojure.core.async.impl.buffers :as buffers]
+            [clojure.core.async.impl.protocols :as impl])
   (:import (org.reactivestreams Publisher Subscriber Subscription)))
 
 (defn close-subscription [s ch]
@@ -36,35 +38,45 @@
        (log/info "Assigned channel:" (.hashCode ch))
        (.onSubscribe s sobj)))))
 
-(defn subscriber [ch]
-  (let [active-s (ref nil)
-        counter (ref 1024)]
-    (reify Subscriber
-      (^void onSubscribe [this ^Subscription s]
-       (log/info "onSubscribe" s)
-       (.request s 1024)
-       (dosync (alter active-s (fn [_] s))))
-      (^void onNext [this ^Object obj]
-       (when-not (nil? @active-s)
-         (log/debug "onNext:::::::::::: CLIENTSIDE[-> " (.hashCode ch)
-                    "][" (.hashCode this) "]" obj)
-         (let [res (>!! ch obj)]
-           (log/trace "Push:" res)
-           (dosync
-            (if res
-              (if (= @counter 512)
-                (.request @active-s 1024)
-                (alter counter #(+ % 1024)))
-              (do
+(defn subscriber [n]
+  (let [buf (buffers/fixed-buffer n)
+        ch (chan buf)
+        active-s (ref nil)
+        requested (ref 0)
+        request (fn [x]
+                  (dosync
+                   (.request @active-s x)
+                   (alter requested #(+ % x))))
+        s (reify Subscriber
+            (^void onSubscribe [this ^Subscription s]
+             (log/info "onSubscribe" s)
+             (dosync
+              (alter active-s (fn [_] s))
+              (request n)))
+            (^void onNext [this ^Object obj]
+             (when-not (nil? @active-s)
+               (log/debug "onNext:::::::::::: CLIENTSIDE[-> " (.hashCode ch)
+                          "][" (.hashCode this) "]" obj)
+               (println "count" (count buf))
+               (let [res (>!! ch obj)]
+                 (log/trace "Push:" res)
+                 (println "post count" (count buf))
+                 (dosync
+                  (alter requested dec)
+                  (if res
+                    (if (= 0 @requested)
+                      (request n))
+                    (do
+                      (.cancel @active-s)
+                      (alter active-s (fn [_] nil))))))))
+            (^void onError [this ^Throwable t]
+             (log/info "onError" (.getMessage t))
+             (put! ch t))
+            (^void onComplete [this]
+             (when-not (nil? @active-s)
+               (log/info "onComplete")
+               (close! ch)
+               (dosync
                 (.cancel @active-s)
-                (alter active-s (fn [_] nil))))))))
-      (^void onError [this ^Throwable t]
-       (log/info "onError" (.getMessage t))
-       (>!! ch t))
-      (^void onComplete [this]
-       (when-not (nil? @active-s)
-         (log/info "onComplete")
-         (close! ch)
-         (dosync
-          (.cancel @active-s)
-          (alter active-s (fn [_] nil))))))))
+                (alter active-s (fn [_] nil))))))]
+    [s ch]))

@@ -62,46 +62,45 @@
         ch (chan 1024)] ;; TODO: Increase this number?
     (go
       (log/trace "Creating failsafe channel")
-      (let [failsafe-ch (chan)]
-        (log/trace "Subscribing...")
-        (try
-          (let [sbr (rx/subscriber failsafe-ch)]
-            (log/trace "We have a subscriber object")
-            (.subscribe muon uri Map sbr)
-            (log/trace "Starting processing loop for" (.hashCode failsafe-ch))
-            (loop [ev (<! failsafe-ch) timeout 1]
-              (log/trace "Arrived" ev "for" (.hashCode failsafe-ch))
-              (if (nil? ev)
-                (do
-                  (log/info ":::::: Stream closed")
-                  (close! failsafe-ch)
-                  (close! ch))
-                (let [thrown? (instance? Throwable ev)]
-                  (if (>! ch (mcu/keywordize ev))
-                    (do
-                      (log/trace "Client received" (pr-str ev))
-                      (if thrown?
-                        (if (and (instance? MuonException ev)
-                                 (= (.getMessage ev) "Stream does not exist"))
-                          (do
-                            (log/info "Stream does not exist, shutting down")
-                            (close! failsafe-ch)
-                            (close! ch))
-                          (do
-                            (log/info (str "::::::::::::: Stream failed, resubscribing after "
-                                           timeout "ms..."))
-                            (Thread/sleep timeout)
-                            (.subscribe muon uri Map (rx/subscriber failsafe-ch))
-                            (recur (<! failsafe-ch) (* 2 timeout))))
-                        (recur (<! failsafe-ch) 1)))
-                    (do
-                      (log/info ":::::: Subscription channel has been closed from outside!")
-                      (close! failsafe-ch)
-                      (.onComplete sbr)))))))
-          (catch Throwable t
-            (log/trace "Error in subscription:" (.getMessage t))
-            (.printStackTrace t)))
-        (log/trace "Subscription ended")))
+      (log/trace "Subscribing...")
+      (try
+        (let [[sbr failsafe-ch] (rx/subscriber 1024)]
+          (log/trace "We have a subscriber object")
+          (.subscribe muon uri Map sbr)
+          (log/trace "Starting processing loop for" (.hashCode failsafe-ch))
+          (loop [ev (<! failsafe-ch) timeout 1]
+            (log/trace "Arrived" ev "for" (.hashCode failsafe-ch))
+            (if (nil? ev)
+              (do
+                (log/info ":::::: Stream closed")
+                (close! failsafe-ch)
+                (close! ch))
+              (let [thrown? (instance? Throwable ev)]
+                (if (>! ch (mcu/keywordize ev))
+                  (do
+                    (log/trace "Client received" (pr-str ev))
+                    (if thrown?
+                      (if (and (instance? MuonException ev)
+                               (= (.getMessage ev) "Stream does not exist"))
+                        (do
+                          (log/info "Stream does not exist, shutting down")
+                          (close! failsafe-ch)
+                          (close! ch))
+                        (do
+                          (log/info (str "::::::::::::: Stream failed, resubscribing after "
+                                         timeout "ms..."))
+                          (Thread/sleep timeout)
+                          (.subscribe muon uri Map (rx/subscriber failsafe-ch))
+                          (recur (<! failsafe-ch) (* 2 timeout))))
+                      (recur (<! failsafe-ch) 1)))
+                  (do
+                    (log/info ":::::: Subscription channel has been closed from outside!")
+                    (close! failsafe-ch)
+                    (.onComplete sbr)))))))
+        (catch Throwable t
+          (log/trace "Error in subscription:" (.getMessage t))
+          (.printStackTrace t)))
+      (log/trace "Subscription ended"))
     ch))
 
 (defn channel-function [implementation]
@@ -147,8 +146,8 @@
             taps (if debug?
                    (let [tap (.tap tc
                                    (reify Predicate (test [_ _] true)))
-                         ch (chan 1024)]
-                     (.subscribe tap (rx/subscriber ch))
+                         [s ch] (rx/subscriber 1024)]
+                     (.subscribe tap s)
                      {:wiretap ch :tap tap})
                    {})]
         (when-not (nil? implementation)
@@ -189,7 +188,6 @@
 (defn muon-client [url service-name & tags]
   (component/start (map->Microservice
                     {:options {:url url
-                               :debug true
                                :service-name service-name
                                :tags tags}})))
 

@@ -15,13 +15,13 @@
 (defn subscription [s ch]
   (reify Subscription
     (request [this n]
-      (log/trace "::::: SUBSCRIPTION" s ":: request" n)
+      (log/info "::::: SUBSCRIPTION" s ":: request" n)
       (go
         (loop [remaining n]
           (when-not (= 0 remaining)
             (if-let [item (<! ch)]
               (do
-                (log/trace "onNext" (dekeywordize item))
+                (log/info "onNext" (dekeywordize item))
                 (.onNext s (dekeywordize item))
                 (recur (dec remaining)))
               (close-subscription s ch))))))

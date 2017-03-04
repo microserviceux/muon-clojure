@@ -88,7 +88,8 @@
                  (.setServiceName service-name)
                  (.setTags (LinkedList. tags)))
         muon-transport (InMemTransport. config local-event-bus)
-        muon (MultiTransportMuon. config local-discovery [muon-transport])]
+        muon (MultiTransportMuon. config local-discovery [muon-transport]
+                                  (JsonOnlyCodecs.))]
     muon))
 
 (defn create-discovery [url]
@@ -116,7 +117,8 @@
         config (doto (AutoConfiguration.)
                  (.setServiceName service-name)
                  (.setTags (LinkedList. tags)))
-        muon (MultiTransportMuon. config discovery [muon-transport])]
+        muon (MultiTransportMuon. config discovery [muon-transport]
+                                  (JsonOnlyCodecs.))]
     muon))
 
 (defn muon-instance

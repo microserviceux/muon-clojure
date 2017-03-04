@@ -5,7 +5,8 @@
                                         chan buffer close! put!]]
             [clojure.core.async.impl.buffers :as buffers]
             [clojure.core.async.impl.protocols :as impl])
-  (:import (org.reactivestreams Publisher Subscriber Subscription)))
+  (:import (org.reactivestreams Publisher Subscriber Subscription)
+           (java.util Map)))
 
 (defn close-subscription [s ch]
   (log/debug "::::::::::::: SUBSCRIBER" s "closing channel...")

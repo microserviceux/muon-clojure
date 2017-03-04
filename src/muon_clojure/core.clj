@@ -66,7 +66,7 @@
       (try
         (let [[sbr failsafe-ch] (rx/subscriber 1024)]
           (log/trace "We have a subscriber object")
-          (.subscribe muon uri Map sbr)
+          (.subscribe muon uri sbr)
           (log/trace "Starting processing loop for" (.hashCode failsafe-ch))
           (loop [ev (<! failsafe-ch) timeout 1]
             (log/trace "Arrived" ev "for" (.hashCode failsafe-ch))
@@ -76,7 +76,7 @@
                 (close! failsafe-ch)
                 (close! ch))
               (let [thrown? (instance? Throwable ev)]
-                (if (>! ch (mcu/keywordize ev))
+                (if (>! ch (mcu/keywordize (.getPayload ev Map)))
                   (do
                     (log/trace "Client received" (pr-str ev))
                     (if thrown?
@@ -116,7 +116,7 @@
                    :order-id (.getOrderId event-raw)
                    :event-time (.getEventTime event-raw)
                    :payload (mcu/keywordize
-                             (into {} (.getPayload event-raw)))}
+                             (into {} (.getPayload event-raw Map)))}
             {:keys [order-id event-time] :as rich-event}
             (handle-event implementation event)]
         (if (contains? rich-event :error)

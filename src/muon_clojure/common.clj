@@ -3,11 +3,18 @@
             [muon-clojure.utils :as mcu]
             [clojure.core.async :refer [chan]]
             [clojure.java.data :as java]
-            [muon-clojure.rx :as rx])
+            [abracad.avro :as avro]
+            [abracad.avro.edn :as aedn]
+            [muon-clojure.rx :as rx]
+            [clojure.java.io :as io]
+            [muon-clojure.data :as data])
   (:import (java.util LinkedList)
            (com.google.common.eventbus EventBus)
+           (org.apache.avro.specific SpecificRecord)
            (io.muoncore MuonBuilder MultiTransportMuon MuonStreamGenerator)
-           (io.muoncore.codec.json JsonOnlyCodecs)
+           (io.muoncore.codec DelegatingCodecs MuonCodec)
+           (io.muoncore.codec.avro AvroCodec)
+           (io.muoncore.codec.json GsonCodec)
            (io.muoncore.config AutoConfiguration)
            (io.muoncore.memory.discovery InMemDiscovery)
            (io.muoncore.memory.transport InMemTransport)
@@ -31,7 +38,9 @@
            (io.muoncore.protocol.requestresponse.server
             RequestResponseServerHandlerApi$Handler
             RequestWrapper HandlerPredicates)
-           (java.util Map)))
+           (clojure.lang BigInt Cons IMeta IPersistentList IPersistentMap
+                         IPersistentSet IPersistentVector ISeq Keyword PersistentArrayMap
+                         PersistentQueue Ratio Sorted Symbol)))
 
 (def type-mappings {:hot-cold PublisherLookup$PublisherType/HOT_COLD
                     :hot PublisherLookup$PublisherType/HOT
@@ -68,8 +77,7 @@
       (log/info "handle" (pr-str query-event))
       (log/trace "handle" (pr-str query-event))
       (let [resource
-            (mcu/keywordize
-             (into {} (-> query-event .getRequest (.getPayload Object))))
+            (mcu/keywordize (-> query-event .getRequest data/payload))
             res (res-fn resource)
             res (if (map? res) res {:_muon_wrapped_value res})]
         ;; TODO: Remove the need for wrapping values!
@@ -83,20 +91,24 @@
 (defn muon-from-config [config]
   (.build (MuonBuilder/withConfig config)))
 
+(def basic-codecs (-> (DelegatingCodecs.)
+                      (.withCodec (AvroCodec.))
+                      (.withCodec (GsonCodec.))))
+
 (defn muon-local [url service-name tags]
   (let [config (doto (AutoConfiguration.)
                  (.setServiceName service-name)
                  (.setTags (LinkedList. tags)))
         muon-transport (InMemTransport. config local-event-bus)
         muon (MultiTransportMuon. config local-discovery [muon-transport]
-                                  (JsonOnlyCodecs.))]
+                                  basic-codecs)]
     muon))
 
 (defn create-discovery [url]
   (let [connection (RabbitMq09ClientAmqpConnection. url)
         queue-factory
         (RabbitMq09QueueListenerFactory. (.getChannel connection))
-        codecs (JsonOnlyCodecs.)
+        codecs basic-codecs
         discovery
         (AmqpDiscovery. queue-factory connection (ServiceCache.) codecs)]
     (.start discovery)
@@ -117,8 +129,7 @@
         config (doto (AutoConfiguration.)
                  (.setServiceName service-name)
                  (.setTags (LinkedList. tags)))
-        muon (MultiTransportMuon. config discovery [muon-transport]
-                                  (JsonOnlyCodecs.))]
+        muon (MultiTransportMuon. config discovery [muon-transport] basic-codecs)]
     muon))
 
 (defn muon-instance

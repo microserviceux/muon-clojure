@@ -2,6 +2,7 @@
   (:gen-class)
   (:require [muon-clojure.utils :as mcu]
             [muon-clojure.common :as mcc]
+            [muon-clojure.data :as data]
             [clojure.tools.logging :as log]
             [clojure.core.async :refer [go-loop go <! >! chan buffer close!]]
             [muon-clojure.rx :as rx]
@@ -18,8 +19,7 @@
            (io.muoncore.protocol.event.server EventServerProtocolStack)
            (io.muoncore.channel.impl StandardAsyncChannel)
            (com.google.common.eventbus EventBus)
-           (java.util.function Predicate)
-           (java.util Map)))
+           (java.util.function Predicate)))
 
 (def ^:dynamic *muon-config* nil)
 
@@ -46,7 +46,7 @@
   (let [response (.request muon service-url params)]
     (log/trace "Response:" (pr-str response))
     (let [got-response (.get response)
-          payload (.getPayload got-response Map)]
+          payload (data/payload got-response)]
       (log/trace "Response payload:" (pr-str payload))
       payload)))
 
@@ -77,7 +77,7 @@
                 (close! failsafe-ch)
                 (close! ch))
               (let [thrown? (instance? Throwable ev)]
-                (if (>! ch (mcu/keywordize (.getPayload ev Map)))
+                (if (>! ch (mcu/keywordize (data/payload ev)))
                   (do
                     (log/trace "Client received" (pr-str ev))
                     (if thrown?
@@ -91,7 +91,9 @@
                           (log/info (str "::::::::::::: Stream failed, resubscribing after "
                                          timeout "ms..."))
                           (Thread/sleep timeout)
-                          (.subscribe muon uri Map (rx/subscriber failsafe-ch))
+                          (.subscribe muon uri
+                                      clojure.lang.PersistentArrayMap
+                                      (rx/subscriber failsafe-ch))
                           (recur (<! failsafe-ch) (* 2 timeout))))
                       (recur (<! failsafe-ch) 1)))
                   (do
@@ -119,8 +121,7 @@
                    :service-id (.getService event-raw)
                    :order-id (.getOrderId event-raw)
                    :event-time (.getEventTime event-raw)
-                   :payload (mcu/keywordize
-                             (into {} (.getPayload event-raw Map)))}
+                   :payload (mcu/keywordize (data/payload event-raw))}
             {:keys [order-id event-time] :as rich-event}
             (handle-event implementation event)]
         (if (contains? rich-event :error)

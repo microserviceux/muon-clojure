@@ -51,8 +51,8 @@
       ch2 (with-muon c (subscribe! (str "stream://" uuid "/stream-test")
                                    {:stream-type :hot}))
       v2 (<!! ch2)]
-  (fact "v1" v1 => {:val 0.0})
-  (fact "v2" v2 => {:val 0.0}))
+  (fact "v1" v1 => {:val 0})
+  (fact "v2" v2 => {:val 0}))
 
 (component/stop c)
 (component/stop ms)

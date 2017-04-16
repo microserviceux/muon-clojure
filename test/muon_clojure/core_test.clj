@@ -80,11 +80,11 @@
   (fact "Query works as expected" get-val => {:test "ok"})
   (fact "Query works as expected for non-map types"
         get-num-val => 3.14)
-  (fact "Post works as expected" post-val => {:val 2.0}))
+  (fact "Post works as expected" post-val => {:val 2}))
 
 (fact "First element retrieved from stream is the first element provided by the service"
       (sample #(<!! (endpoint->ch c uuid "stream-test")))
-      => {:val 1.0})
+      => {:val 1})
 (fact "Stream results come ordered"
       (sample #(let [not-ordered (ch->seq (endpoint->ch c uuid "stream-test"))]
                  (= not-ordered (sort-by :val not-ordered))))
@@ -99,7 +99,7 @@
       (sample #(count (ch->seq (endpoint->ch c uuid "stream-test"))))
       => 5)
 (fact "Posting many times in a row works as expected"
-      (sample #(post-vals c uuid 5)) => (take 5 (repeat {:val 2.0})))
+      (sample #(post-vals c uuid 5)) => (take 5 (repeat {:val 2})))
 (with-muon c (event! {:stream-name "test" :payload {:hello true}}))
 (facts "If we send an event using the event protocol, it is properly received"
        (let [ev (first @events)]
@@ -136,7 +136,7 @@
   (fact "Query works as expected" get-val => {:test "ok"})
   (fact "Query works as expected for non-map types"
         get-num-val => 3.14)
-  (fact "Post works as expected" post-val => {:val 2.0})
+  (fact "Post works as expected" post-val => {:val 2})
   (component/stop ms))
 
 (let [uuid (.toString (java.util.UUID/randomUUID))

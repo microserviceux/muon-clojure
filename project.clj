@@ -1,4 +1,4 @@
-(defproject io.muoncore/muon-clojure "7.2.4"
+(defproject io.muoncore/muon-clojure "7.2.4-1"
   :description "A Clojure client/server library for interacting with Muon microservices."
   :url "https://github.com/muoncore/muon-clojure"
   :license {:name "GNU Affero General Public License Version 3"

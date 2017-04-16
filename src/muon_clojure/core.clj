@@ -28,6 +28,7 @@
 (defprotocol MicroserviceEvent (handle-event [this event]))
 (defprotocol ClientConnection
   (wiretap [this])
+  (discover [this])
   (request [this service-url params])
   (subscribe [this service-url params]))
 
@@ -103,6 +104,9 @@
       (log/trace "Subscription ended"))
     ch))
 
+(defn impl-discover [muon]
+  (map from-java (-> muon (.getDiscovery) (.getKnownServices)))) 
+
 (defn channel-function [implementation]
   (reify ChannelConnection$ChannelFunction
     (apply [_ event-wrapper]
@@ -132,6 +136,8 @@
     (impl-request (:muon this) service-url params))
   (subscribe [this service-url params]
     (impl-subscribe (:muon this) service-url params))
+  (discover [this]
+    (impl-discover (:muon this)))
   component/Lifecycle
   (start [component]
     (if (nil? (:muon component))
@@ -184,6 +190,12 @@
 
 (defn micro-service [options]
   (map->Microservice {:options options}))
+
+(defn anonymous-micro-service []
+  (component/start
+   (micro-service {:rabbit-url :local
+                   :service-name (.toString (java.util.UUID/randomUUID))
+                   :tags ["anonymous"]})))
 
 (defn muon-client [url service-name & tags]
   (component/start (map->Microservice
@@ -244,3 +256,6 @@
         payload (if (contains? payload :_muon_wrapped_value)
                   (:_muon_wrapped_value payload) payload)]
     payload))
+
+(defn discover! []
+  (discover *muon-config*))

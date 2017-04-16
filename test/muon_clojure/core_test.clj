@@ -165,9 +165,15 @@
                              {:test :ok}))
       post-val
       (with-muon c (request! (str "rpc://" uuid "/post-endpoint")
-                             {:val 1}))]
+                             {:val 1}))
+      discovery
+      (with-muon c (discover!))]
   (fact "Query works as expected" get-val => {:test "ok"})
   (fact "Query works as expected for non-map types"
         get-num-val => 3.14)
   (fact "Post works as expected" post-val => {:val 2.0})
+  (fact "Discovery includes an eventstore"
+        (count (filter (fn [x] (contains? (into #{} (:tags x)) "eventstore"))
+                       discovery))
+        => pos?)
   (component/stop ms))

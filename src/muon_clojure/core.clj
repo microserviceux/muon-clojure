@@ -194,7 +194,7 @@
 
 (defn anonymous-micro-service []
   (component/start
-   (micro-service {:rabbit-url :local
+   (micro-service {:url :local
                    :service-name (.toString (java.util.UUID/randomUUID))
                    :tags ["anonymous"]})))
 
@@ -258,5 +258,4 @@
                   (:_muon_wrapped_value payload) payload)]
     payload))
 
-(defn discover! []
-  (discover *muon-config*))
+(defn discover! [] (discover *muon-config*))

@@ -16,27 +16,28 @@
 (defn subscription [s ch]
   (reify Subscription
     (request [this n]
-      (log/info "::::: SUBSCRIPTION" s ":: request" n)
+      (log/trace "::::: SUBSCRIPTION" s ":: request" n)
       (go
         (loop [remaining n]
           (when-not (= 0 remaining)
             (if-let [item (<! ch)]
               (do
-                (log/info "onNext" (dekeywordize item))
+                (log/trace "onNext" (dekeywordize item) remaining)
                 (.onNext s (dekeywordize item))
                 (recur (dec remaining)))
               (close-subscription s ch))))))
     (cancel [this]
-      (close! ch))))
+      (close! ch)
+      (log/debug "subscription cancelled"))))
 
 (defn publisher [gen-fn params]
-  (log/info (str "::::::::::::::::::::::::::::::: " (pr-str params)))
+  (log/debug (str "::::::::::::::::::::::::::::::: " (pr-str params)))
   (reify Publisher
     (^void subscribe [this ^Subscriber s]
-     (log/info "subscribe::::::::: SUBSCRIBER" s)
+     (log/debug "subscribe::::::::: SUBSCRIBER" s)
      (let [ch (gen-fn (keywordize params))
            sobj (subscription s ch)]
-       (log/info "Assigned channel:" (.hashCode ch))
+       (log/trace "Assigned channel:" (.hashCode ch))
        (.onSubscribe s sobj)))))
 
 (defn subscriber [n]
@@ -50,32 +51,35 @@
                    (alter requested #(+ % x))))
         s (reify Subscriber
             (^void onSubscribe [this ^Subscription s]
-             (log/info "onSubscribe" s)
+             (log/debug "onSubscribe" s)
              (dosync
-              (alter active-s (fn [_] s))
-              (request n)))
+              (alter active-s (fn [_] s)))
+             (request n))
             (^void onNext [this ^Object obj]
              (when-not (nil? @active-s)
                (log/debug "onNext:::::::::::: CLIENTSIDE[-> " (.hashCode ch)
-                          "][" (.hashCode this) "]" obj)
+                          "][" (.hashCode this) "]" obj "/" (.count buf))
                (let [res (>!! ch obj)]
-                 (log/trace "Push:" res)
+                 (log/trace "Push:" obj res @requested)
                  (dosync
                   (alter requested dec)
                   (if res
-                    (if (= 0 @requested)
+                    (if (<= @requested 0)
                       (request n))
-                    (do
-                      (.cancel @active-s)
-                      (alter active-s (fn [_] nil))))))))
+                    (let [a-s @active-s]
+                      (alter active-s (fn [_] nil))
+                      (when-not (nil? a-s)
+                        (.cancel a-s))))))))
             (^void onError [this ^Throwable t]
-             (log/info "onError" (.getMessage t))
+             (log/error "onError" (.getMessage t))
              (put! ch t))
             (^void onComplete [this]
              (when-not (nil? @active-s)
-               (log/info "onComplete")
+               (log/debug "onComplete")
                (close! ch)
                (dosync
-                (.cancel @active-s)
-                (alter active-s (fn [_] nil))))))]
+                (let [a-s @active-s]
+                  (alter active-s (fn [_] nil))
+                  (when-not (nil? a-s)
+                    (.cancel a-s)))))))]
     [s ch]))
